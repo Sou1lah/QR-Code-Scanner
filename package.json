@@ -4,13 +4,19 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm --prefix mobile run start",
+    "android": "npm --prefix mobile run start -- --android",
+    "apk": "npm --prefix mobile run apk",
+    "web:dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "mobile:typecheck": "npm --prefix mobile run typecheck"
   },
   "dependencies": {
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/core": "^7.6.10",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.468.0",
     "qr-scanner": "^1.4.2",
@@ -20,6 +26,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.10",
     "@eslint/js": "^9.17.0",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.18",

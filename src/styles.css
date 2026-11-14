@@ -21,6 +21,10 @@ body,
   height: 100%;
   margin: 0;
 }
+.phone-preview-stage {
+  width: 100%;
+  height: 100%;
+}
 body {
   overflow: hidden;
   background: #000;
@@ -175,4 +179,40 @@ button {
 }
 .animate-ios-laser {
   animation: scan-laser-ios 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (min-width: 640px) {
+  .phone-preview-stage.is-dev {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+    padding: 24px;
+    background: #080b12;
+  }
+  .phone-preview-stage.is-dev .app-shell {
+    width: min(390px, calc((100dvh - 48px) * 0.462));
+    height: min(844px, calc(100dvh - 48px));
+    border: 10px solid #202936;
+    border-radius: 54px;
+    padding-top: 24px;
+    padding-bottom: 8px;
+    box-shadow:
+      0 30px 90px -20px rgba(0, 0, 0, 0.95),
+      0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+  .phone-preview-stage.is-dev .app-shell::before {
+    position: absolute;
+    z-index: 60;
+    top: 5px;
+    left: 50%;
+    width: 102px;
+    height: 20px;
+    transform: translateX(-50%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 9999px;
+    background: #000;
+    content: '';
+    pointer-events: none;
+  }
 }

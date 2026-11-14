@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  server: { host: true },
+  server: { host: true, open: true },
   preview: { host: true },
   plugins: [
     react(),
