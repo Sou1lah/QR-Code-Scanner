@@ -1,10 +1,12 @@
 import type { PropsWithChildren, ReactNode } from 'react'
-import { Pressable, StyleSheet, Switch, View, type StyleProp, type ViewStyle } from 'react-native'
+import { Animated, Pressable, StyleSheet, Switch, View, type StyleProp, type ViewStyle } from 'react-native'
+import { useRef } from 'react'
 import { useAppState } from '@/context/AppContext'
 import { AppIcon, type IconName } from './AppIcon'
 import { AppText } from './AppText'
 import { GlassCard } from './Glass'
 import { colors, radius, space, toneColor, withAlpha, type Tone } from './theme'
+import { useReducedMotion } from './useReducedMotion'
 
 export function Chip({
   label,
@@ -59,30 +61,54 @@ export function GlassButton({
   style?: StyleProp<ViewStyle>
 }) {
   const { isDark } = useAppState()
+  const reducedMotion = useReducedMotion()
+  const scale = useRef(new Animated.Value(1)).current
   const isPrimary = variant === 'primary'
   const textColor = isPrimary ? '#FFFFFF' : isDark ? '#F2F5FF' : '#0F172A'
   const iconColor = isPrimary ? '#FFFFFF' : isDark ? colors.accent : '#0A84FF'
 
+  const handlePressIn = () => {
+    if (reducedMotion || disabled) return
+    Animated.spring(scale, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      speed: 50,
+      bounciness: 0,
+    }).start()
+  }
+  const handlePressOut = () => {
+    if (reducedMotion || disabled) return
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 30,
+      bounciness: 4,
+    }).start()
+  }
+
   return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        !isDark && styles.buttonLight,
-        isPrimary && styles.primaryButton,
-        variant === 'secondary' && (isDark ? styles.secondaryButton : styles.secondaryButtonLight),
-        disabled && styles.disabledButton,
-        pressed && !disabled && styles.pressedButton,
-        style,
-      ]}
-    >
-      {icon && <AppIcon name={icon} size={18} color={iconColor} />}
-      <AppText variant="label" color={textColor}>
-        {label}
-      </AppText>
-    </Pressable>
+    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+      <Pressable
+        accessibilityRole="button"
+        disabled={disabled}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={({ pressed }) => [
+          styles.button,
+          !isDark && styles.buttonLight,
+          isPrimary && styles.primaryButton,
+          variant === 'secondary' && (isDark ? styles.secondaryButton : styles.secondaryButtonLight),
+          disabled && styles.disabledButton,
+          pressed && !disabled && styles.pressedButton,
+        ]}
+      >
+        {icon && <AppIcon name={icon} size={18} color={iconColor} />}
+        <AppText variant="label" color={textColor}>
+          {label}
+        </AppText>
+      </Pressable>
+    </Animated.View>
   )
 }
 
@@ -100,6 +126,17 @@ export function PermissionCard({
   onOpenSettings?: () => void
 }) {
   const { isDark } = useAppState()
+  const reducedMotion = useReducedMotion()
+  const primaryScale = useRef(new Animated.Value(1)).current
+
+  const handlePrimaryPressIn = () => {
+    if (reducedMotion) return
+    Animated.spring(primaryScale, { toValue: 0.96, useNativeDriver: true, speed: 50, bounciness: 0 }).start()
+  }
+  const handlePrimaryPressOut = () => {
+    if (reducedMotion) return
+    Animated.spring(primaryScale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 4 }).start()
+  }
 
   return (
     <GlassCard rounded="xl" intensity={65} style={styles.permissionCard}>
@@ -119,16 +156,20 @@ export function PermissionCard({
         </AppText>
       </View>
       <View style={styles.permissionActions}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onAction}
-          style={({ pressed }) => [styles.permissionPrimaryBtn, pressed && styles.pressedButton]}
-        >
-          <AppIcon name="camera" size={18} color="#FFFFFF" />
-          <AppText variant="label" color="#FFFFFF" style={styles.permissionBtnText}>
-            {actionLabel}
-          </AppText>
-        </Pressable>
+        <Animated.View style={{ transform: [{ scale: primaryScale }] }}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onAction}
+            onPressIn={handlePrimaryPressIn}
+            onPressOut={handlePrimaryPressOut}
+            style={({ pressed }) => [styles.permissionPrimaryBtn, pressed && styles.pressedButton]}
+          >
+            <AppIcon name="camera" size={18} color="#FFFFFF" />
+            <AppText variant="label" color="#FFFFFF" style={styles.permissionBtnText}>
+              {actionLabel}
+            </AppText>
+          </Pressable>
+        </Animated.View>
         {onOpenSettings && (
           <Pressable
             accessibilityRole="button"
