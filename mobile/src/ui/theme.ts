@@ -1,3 +1,5 @@
+import { Platform } from 'react-native'
+
 export const colors = {
   bg: '#02030F',
   background: '#02030F',
@@ -17,6 +19,37 @@ export const colors = {
   glassBorder: 'rgba(255,255,255,0.18)',
 } as const
 
+export type GlassQuality = 'full' | 'reduced'
+
+export function resolveGlassQuality(): GlassQuality {
+  if (Platform.OS === 'android') {
+    // Android 12 (API 31) added RenderEffect / dimezisBlurViewSdk31Plus.
+    // On Android < 31, blur is either unsupported or causes frame drops.
+    if (typeof Platform.Version === 'number' && Platform.Version < 31) {
+      return 'reduced'
+    }
+  }
+  return 'full'
+}
+
+export const glassSheen = {
+  dark: {
+    highlight: ['rgba(255, 255, 255, 0.55)', 'rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.0)'] as const,
+    sheen: ['rgba(255, 255, 255, 0.07)', 'rgba(255, 255, 255, 0.01)', 'transparent'] as const,
+    fill: 'rgba(255, 255, 255, 0.05)',
+    border: 'rgba(255, 255, 255, 0.16)',
+    fallback: 'rgba(12, 18, 44, 0.88)',
+  },
+  light: {
+    highlight: ['rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 0.55)', 'rgba(255, 255, 255, 0.2)'] as const,
+    sheen: ['rgba(255, 255, 255, 0.45)', 'rgba(255, 255, 255, 0.12)', 'transparent'] as const,
+    fill: 'rgba(255, 255, 255, 0.82)',
+    border: 'rgba(0, 0, 0, 0.08)',
+    innerBorder: 'rgba(255, 255, 255, 0.95)',
+    fallback: 'rgba(255, 255, 255, 0.94)',
+  },
+} as const
+
 export function getThemeColors(isDark: boolean) {
   return {
     ...colors,
@@ -25,11 +58,11 @@ export function getThemeColors(isDark: boolean) {
     text: isDark ? '#F2F5FF' : '#0F172A',
     textMuted: isDark ? 'rgba(235,240,255,0.62)' : 'rgba(71,85,105,0.85)',
     muted: isDark ? 'rgba(235,240,255,0.62)' : 'rgba(71,85,105,0.85)',
-    surface: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.82)',
-    border: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)',
-    glassFill: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.85)',
-    glassFallback: isDark ? 'rgba(12,18,44,0.78)' : 'rgba(255,255,255,0.92)',
-    glassBorder: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)',
+    surface: isDark ? glassSheen.dark.fill : glassSheen.light.fill,
+    border: isDark ? glassSheen.dark.border : glassSheen.light.border,
+    glassFill: isDark ? glassSheen.dark.fill : glassSheen.light.fill,
+    glassFallback: isDark ? glassSheen.dark.fallback : glassSheen.light.fallback,
+    glassBorder: isDark ? glassSheen.dark.border : glassSheen.light.border,
   }
 }
 
