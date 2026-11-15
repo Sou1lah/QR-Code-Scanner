@@ -1,64 +1,81 @@
 # AMANE DZ
 
-AMANE DZ is a React Native QR-safety scanner built with Expo. The existing
-browser/PWA implementation remains under `src/`; the Expo app is under `mobile/`.
+AMANE DZ is a React Native QR-safety scanner mobile app built with Expo. The mobile app source code is located in `mobile/`. (The legacy web/PWA interface remains in `src/`).
 
-## Develop on Android
+---
 
-Install Node.js 20+ and the project dependencies:
+## 🚀 Quick Start: Live Coding with Emulator on the Right
 
-```sh
-npm install
-cd mobile && npm install && cd ..
-```
-
-Start an Android emulator in Android Studio, then run:
+### 1. Launch the Android Emulator & App
+Run from the project root:
 
 ```sh
 npm run android
 ```
 
-Expo opens the app in the emulator. Keep the terminal running: React Native
-Fast Refresh applies saved code changes to the emulator while you work. You can
-also run `npm run dev` and press `a` in the Expo terminal to open Android.
+This launches your configured Pixel emulator (`AMANE_Pixel_6_API_36`) and automatically opens the AMANE DZ app.
 
-The scanner uses the emulator camera if one is configured; demo QR payloads
-are available on the Scanner tab for testing without a camera. On a physical
-phone, install Expo Go and scan the QR code printed by `npm run dev`.
+> **💡 Side-by-Side Coding Setup**:
+> 1. Tile your terminal/editor to the left half of the screen (`Super + Left Arrow`).
+> 2. Tile the Android emulator window to the right half (`Super + Right Arrow`).
+> 3. Click the **Pin** icon (**Always on Top**) on the emulator's toolbar (or right-click the titlebar -> *More Actions* -> *Keep Above Others*).
+> 4. React Native **Fast Refresh** updates the emulator screen instantly whenever you save code (`:w` in Neovim or `Ctrl+S` in VS Code).
 
-## Build and share an APK
+---
 
-Install Android Studio with its Android SDK and JDK 17 or newer. Then build a
-debug APK locally:
+## 📱 Launching & Updating the App
+
+- **Fast Refresh Dev Mode**:
+  ```sh
+  npm run dev
+  ```
+  Starts Metro bundler. Press `a` in the terminal to connect your running emulator.
+
+- **Standalone App on Device / Emulator**:
+  Once installed via `npm run apk`, the app appears in your emulator's app menu with the **QR Code scanner icon** titled **AMANE DZ**. Clicking it launches the standalone native build directly.
+
+---
+
+## 📦 How to Build & Share the APK
+
+To generate a shareable `.apk` file for testing or sending to other phones:
 
 ```sh
 npm run apk
 ```
 
-The APK is written to `mobile/dist/AMANE-DZ-debug.apk`. Send that file to an
-Android tester; they may need to allow installing apps from their browser or
-file manager. This debug APK is for testing, not Play Store distribution.
+### What happens when you run `npm run apk`:
+1. Compiles the native Android application with the custom QR Code icon and bundled assets.
+2. Generates the APK file at:
+   ```
+   mobile/dist/AMANE-DZ-debug.apk
+   ```
+3. If an emulator or phone is connected via USB/ADB, it **automatically installs/updates** the app on the device immediately!
 
-`npm run apk` runs Expo prebuild and Gradle locally, so it requires a working
-Android SDK and JDK. Set `JAVA_HOME` to JDK 17+ and `ANDROID_HOME` to the SDK
-directory if they are not detected automatically.
+### How to share the APK:
+1. Copy or send `mobile/dist/AMANE-DZ-debug.apk` via Telegram, Google Drive, WhatsApp, or email.
+2. The recipient taps the file on their Android phone to install (they may need to toggle *"Allow installation from unknown sources"* in their phone settings).
 
-## Commands
+---
+
+## 🛠 Commands Reference
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start Expo/Metro with Fast Refresh |
-| `npm run android` | Start Expo and open the Android emulator |
-| `npm run mobile:typecheck` | Type-check the React Native app |
-| `npm run apk` | Build a shareable debug APK |
-| `npm run web:dev` | Start the retained Vite browser app |
-| `npm run build` | Build the retained Vite/PWA app |
+| `npm run android` | Launch the Android emulator with AMANE DZ |
+| `npm run dev` | Start Expo/Metro dev server with Fast Refresh |
+| `npm run apk` | Build and auto-install `AMANE-DZ-debug.apk` |
+| `npm run mobile:typecheck` | Type-check TypeScript files in `mobile/` |
+| `npm run web:dev` | Start the retained Vite browser web app |
+| `npm run build` | Build the retained Vite/PWA web app |
 
-## Scan service
+---
 
-The native app defaults to mock scan results. To connect it to a separately
-hosted API, copy `mobile/.env.example` to `mobile/.env.local`, set
-`EXPO_PUBLIC_API_URL` to the API origin and set `EXPO_PUBLIC_USE_MOCK=false`.
-These Expo public variables are bundled into the app; do not put secrets in
-them.
-# Network-5-5-
+## ⚙️ Wayland / Linux Note
+
+If launching the emulator manually from a terminal on Linux with KDE/Wayland, ensure `QT_QPA_PLATFORM=xcb` is set:
+```sh
+QT_QPA_PLATFORM=xcb emulator @AMANE_Pixel_6_API_36
+```
+*(All `npm` scripts in this project already configure this automatically).*
+

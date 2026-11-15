@@ -1,41 +1,40 @@
-import { Stack } from 'expo-router'
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { ActivityIndicator, StyleSheet, View } from 'react-native'
 import { AppProvider, useAppState } from '@/context/AppContext'
+import { GlassRoot } from '@/ui'
 
 function AppNavigation() {
-  const { ready } = useAppState()
-  if (!ready) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator color="#0A84FF" />
-      </View>
-    )
-  }
+  const { isDark } = useAppState()
 
   return (
     <>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
         <Stack.Screen name="(tabs)" />
       </Stack>
     </>
   )
 }
 
-export default function RootLayout() {
+function ThemedRoot() {
+  const { isDark } = useAppState()
+  const theme = isDark
+    ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: 'transparent' } }
+    : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: 'transparent' } }
+
   return (
-    <AppProvider>
-      <AppNavigation />
-    </AppProvider>
+    <ThemeProvider value={theme}>
+      <GlassRoot isDark={isDark}>
+        <AppNavigation />
+      </GlassRoot>
+    </ThemeProvider>
   )
 }
 
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#080B12',
-  },
-})
+export default function RootLayout() {
+  return (
+    <AppProvider>
+      <ThemedRoot />
+    </AppProvider>
+  )
+}

@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "npm --prefix mobile run start",
-    "android": "npm --prefix mobile run start -- --android",
+    "dev": "QT_QPA_PLATFORM=xcb npm --prefix mobile run start",
+    "android": "npm --prefix mobile run android",
     "apk": "npm --prefix mobile run apk",
     "web:dev": "vite",
     "build": "tsc -b && vite build",

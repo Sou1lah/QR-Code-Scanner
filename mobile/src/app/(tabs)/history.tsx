@@ -1,10 +1,11 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { Card, colors, PageHeader, Screen, VerdictBadge } from '@/components/ui'
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { AppIcon, AppText, Card, colors, PageHeader, Screen, useTabBarSpace, VerdictBadge } from '@/ui'
 import { useAppState } from '@/context/AppContext'
 import type { HistoryItem } from '@/types/api'
 
 export default function HistoryScreen() {
   const { history, clearHistory } = useAppState()
+  const tabBarSpace = useTabBarSpace()
 
   const confirmClear = () => {
     Alert.alert('Clear scan history?', 'This removes all saved QR audit records from this device.', [
@@ -15,27 +16,37 @@ export default function HistoryScreen() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarSpace }]}
+        showsVerticalScrollIndicator={false}
+      >
         <PageHeader
           title="History"
           subtitle="Scanned QR payload audit records"
           action={
             history.length > 0 ? (
-              <Pressable accessibilityRole="button" onPress={confirmClear} hitSlop={8}>
-                <Text style={styles.clearButton}>Clear all</Text>
+              <Pressable accessibilityRole="button" onPress={confirmClear} hitSlop={8} style={styles.clearButtonWrap}>
+                <AppIcon name="trash" size={14} color={colors.danger} />
+                <AppText variant="caption" style={styles.clearButton}>Clear all</AppText>
               </Pressable>
             ) : undefined
           }
         />
         {history.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>◷</Text>
-            <Text style={styles.emptyTitle}>No scans yet</Text>
-            <Text style={styles.emptyMessage}>Your scanned payloads will appear here.</Text>
+            <View style={styles.emptyIconWrap}>
+              <AppIcon name="history" size={44} color={colors.accent} />
+            </View>
+            <AppText variant="heading" style={styles.emptyTitle}>No scans yet</AppText>
+            <AppText variant="caption" color={colors.textMuted} style={styles.emptyMessage}>
+              Scan QR codes with the camera or gallery to view your audit log.
+            </AppText>
           </View>
         ) : (
           <View style={styles.list}>
-            {history.map((item) => <HistoryCard key={item.id} item={item} />)}
+            {history.map((item) => (
+              <HistoryCard key={item.id} item={item} />
+            ))}
           </View>
         )}
       </ScrollView>
@@ -44,11 +55,20 @@ export default function HistoryScreen() {
 }
 
 function HistoryCard({ item }: { item: HistoryItem }) {
+  const isUrl = /^https?:\/\//i.test(item.raw)
+  const isWifi = /^WIFI:/i.test(item.raw)
+  const iconName = isUrl ? 'link' : isWifi ? 'wifi' : 'document'
+
   return (
     <Card style={styles.historyCard}>
+      <View style={styles.cardIconWrap}>
+        <AppIcon name={iconName} size={18} color={colors.accent} />
+      </View>
       <View style={styles.historyCopy}>
-        <Text style={styles.time}>{relativeTime(item.timestamp)}</Text>
-        <Text numberOfLines={2} style={styles.payload}>{item.raw}</Text>
+        <AppText variant="caption" color={colors.textMuted} style={styles.time}>{relativeTime(item.timestamp)}</AppText>
+        <AppText numberOfLines={2} style={styles.payload}>
+          {item.raw}
+        </AppText>
       </View>
       <VerdictBadge verdict={item.result.verdict} />
     </Card>
@@ -70,13 +90,39 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 28,
   },
+  clearButtonWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 69, 58, 0.12)',
+  },
   clearButton: {
-    color: colors.accent,
+    color: colors.danger,
     fontSize: 12,
     fontWeight: '700',
   },
   list: {
     gap: 10,
+  },
+  cardIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(10, 132, 255, 0.12)',
+  },
+  emptyIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(10, 132, 255, 0.12)',
+    marginBottom: 8,
   },
   historyCard: {
     flexDirection: 'row',
@@ -90,11 +136,9 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   time: {
-    color: colors.muted,
     fontSize: 10,
   },
   payload: {
-    color: colors.text,
     fontFamily: 'monospace',
     fontSize: 11,
     lineHeight: 16,
@@ -108,16 +152,13 @@ const styles = StyleSheet.create({
   },
   emptyIcon: {
     marginBottom: 5,
-    color: colors.muted,
     fontSize: 36,
   },
   emptyTitle: {
-    color: colors.text,
     fontSize: 16,
     fontWeight: '700',
   },
   emptyMessage: {
-    color: colors.muted,
     fontSize: 12,
   },
 })

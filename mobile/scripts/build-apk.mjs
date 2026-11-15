@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -44,12 +44,30 @@ if (!sdkPath) {
 const expoCli = join(projectDirectory, 'node_modules', 'expo', 'bin', 'cli')
 run(process.execPath, [expoCli, 'prebuild', '--platform', 'android'])
 
+const appGradle = join(androidDirectory, 'app', 'build.gradle')
+const appGradleContent = readFileSync(appGradle, 'utf8')
+const reactBlock = 'react {\n'
+if (!appGradleContent.includes(reactBlock)) {
+  console.error(`Could not configure a standalone debug APK in ${appGradle}`)
+  process.exit(1)
+}
+writeFileSync(appGradle, appGradleContent.replace(reactBlock, `${reactBlock}    debuggableVariants = []\n`))
+
 const gradleWrapper = join(androidDirectory, isWindows ? 'gradlew.bat' : 'gradlew')
 if (!existsSync(gradleWrapper)) {
   console.error('Expo prebuild did not create the Android Gradle wrapper.')
   process.exit(1)
 }
-run(gradleWrapper, ['assembleDebug'], androidDirectory)
+run(
+  gradleWrapper,
+  [
+    'assembleDebug',
+    '-PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64',
+    '--max-workers=1',
+    '--no-parallel',
+  ],
+  androidDirectory,
+)
 
 const builtApk = join(androidDirectory, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')
 if (!existsSync(builtApk)) {
@@ -61,3 +79,22 @@ const outputApk = join(outputDirectory, 'AMANE-DZ-debug.apk')
 mkdirSync(outputDirectory, { recursive: true })
 copyFileSync(builtApk, outputApk)
 console.log(`\nDebug APK created:\n${outputApk}`)
+
+// Auto-install onto connected emulator or device if available
+const adbPath = join(sdkPath, 'platform-tools', isWindows ? 'adb.exe' : 'adb')
+if (existsSync(adbPath)) {
+  const adbDevices = spawnSync(adbPath, ['devices'], { encoding: 'utf8' })
+  const hasDevice = (adbDevices.stdout ?? '')
+    .split('\n')
+    .slice(1)
+    .some((line) => line.trim().endsWith('device'))
+  if (hasDevice) {
+    console.log('\nInstalling updated APK to connected device/emulator...')
+    const installResult = spawnSync(adbPath, ['install', '-r', outputApk], { stdio: 'inherit' })
+    if (installResult.error || installResult.status !== 0) {
+      console.error(`Could not install the APK: ${installResult.error?.message ?? 'adb install failed'}`)
+      process.exit(installResult.status ?? 1)
+    }
+    console.log('AMANE DZ launcher icon is now up-to-date on your device/emulator.')
+  }
+}

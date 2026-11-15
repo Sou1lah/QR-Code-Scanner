@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { Card, colors, PageHeader, Screen, SectionTitle, ToggleRow } from '@/components/ui'
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native'
+import { AppText, Card, colors, PageHeader, Screen, SectionTitle, ToggleRow, useTabBarSpace } from '@/ui'
 import { useAppState } from '@/context/AppContext'
 import { checkApiHealth, isMockMode } from '@/services/api'
 import type { ScanSettings } from '@/types/api'
@@ -8,7 +8,8 @@ import type { ScanSettings } from '@/types/api'
 type ApiStatus = 'checking' | 'connected' | 'offline'
 
 export default function SettingsScreen() {
-  const { settings, setSetting, setDemoMode } = useAppState()
+  const { settings, setSetting, setDemoMode, isDark, toggleTheme } = useAppState()
+  const tabBarSpace = useTabBarSpace()
   const [apiStatus, setApiStatus] = useState<ApiStatus>('checking')
 
   useEffect(() => {
@@ -25,12 +26,16 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarSpace }]}
+        showsVerticalScrollIndicator={false}
+      >
         <PageHeader title="Settings" subtitle="Threat engine & security policies" />
 
         <SectionTitle>Threat protection</SectionTitle>
         <Card style={styles.section}>
           <ToggleRow
+            icon="shield"
             label="Zero-Auto Action"
             description="Always preview payload before launching"
             value
@@ -38,12 +43,14 @@ export default function SettingsScreen() {
             disabled
           />
           <ToggleRow
+            icon="link"
             label="URL Shortener Unfurl"
             description="Resolve shortlinks & examine destination"
             value={settings.urlShortenerUnfurl}
             onValueChange={(value) => change('urlShortenerUnfurl', value)}
           />
           <ToggleRow
+            icon="lock"
             label="Block Insecure HTTP"
             description="Flag unencrypted website protocols"
             value={settings.blockInsecureHttp}
@@ -54,6 +61,7 @@ export default function SettingsScreen() {
         <SectionTitle>Intelligence sources</SectionTitle>
         <Card style={styles.section}>
           <ToggleRow
+            icon="globe"
             label="Safe Browsing API"
             description="Real-time threat database lookup"
             value={settings.safeBrowsingApi}
@@ -64,6 +72,14 @@ export default function SettingsScreen() {
         <SectionTitle>App</SectionTitle>
         <Card style={styles.section}>
           <ToggleRow
+            icon={isDark ? 'moon' : 'sunny'}
+            label="Dark Mode"
+            description="Use glass dark appearance across all screens"
+            value={isDark}
+            onValueChange={toggleTheme}
+          />
+          <ToggleRow
+            icon="flash"
             label="Demo Mode"
             description="Show sample QR payloads on Scanner"
             value={settings.demoMode}
@@ -74,23 +90,22 @@ export default function SettingsScreen() {
               <ActivityIndicator size="small" color={colors.warning} />
             ) : (
               <View
-                style={[
-                  styles.statusDot,
-                  { backgroundColor: apiStatus === 'connected' ? colors.safe : colors.danger },
-                ]}
+                style={[styles.statusDot, { backgroundColor: apiStatus === 'connected' ? colors.safe : colors.danger }]}
               />
             )}
             <View style={styles.statusCopy}>
-              <Text style={styles.statusTitle}>Back-end connection</Text>
-              <Text style={styles.statusDescription}>
-                API {apiStatus}{isMockMode ? ' · Demo responses' : ''}
-              </Text>
+              <AppText variant="body" style={styles.statusTitle}>Back-end connection</AppText>
+              <AppText variant="caption" color={colors.textMuted} style={styles.statusDescription}>
+                API {apiStatus}
+                {isMockMode ? ' · Demo responses' : ''}
+              </AppText>
             </View>
           </View>
         </Card>
-        <Text style={styles.note}>
-          Camera access is requested on-device before scanning. QR payloads are shown for review and are never opened automatically.
-        </Text>
+        <AppText variant="caption" color={colors.textMuted} style={styles.note}>
+          Camera access is requested on-device before scanning. QR payloads are shown for review and are never opened
+          automatically.
+        </AppText>
       </ScrollView>
     </Screen>
   )
@@ -121,16 +136,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statusTitle: {
-    color: colors.text,
     fontSize: 13,
     fontWeight: '600',
   },
   statusDescription: {
-    color: colors.muted,
     fontSize: 11,
   },
   note: {
-    color: colors.muted,
     fontSize: 11,
     lineHeight: 17,
     paddingHorizontal: 3,

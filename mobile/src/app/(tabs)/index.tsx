@@ -2,10 +2,41 @@ import { CameraView, scanFromURLAsync, useCameraPermissions } from 'expo-camera'
 import * as Clipboard from 'expo-clipboard'
 import * as ImagePicker from 'expo-image-picker'
 import { usePathname } from 'expo-router'
-import { useCallback, useRef, useState } from 'react'
-import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  Alert,
+  Animated,
+  AppState,
+  Easing,
+  Image,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native'
 import type { BarcodeScanningResult } from 'expo-camera'
-import { ActionButton, Card, colors, Screen, SectionTitle, VerdictBadge } from '@/components/ui'
+import {
+  ActionButton,
+  AppIcon,
+  AppText,
+  Chip,
+  colors,
+  GlassButton,
+  GlassCard,
+  images,
+  PermissionCard,
+  radius,
+  Screen,
+  ScreenHeader,
+  SectionTitle,
+  useTabBarSpace,
+  VerdictBadge,
+  withAlpha,
+  type IconName,
+  type Tone,
+} from '@/ui'
 import { useAppState } from '@/context/AppContext'
 import { parsePayload } from '@/lib/parsePayload'
 import { demoPayloads } from '@/services/mock'
@@ -21,14 +52,57 @@ const resultTitle = {
 export default function ScannerScreen() {
   const pathname = usePathname()
   const isActive = pathname === '/'
-  const [permission, requestPermission] = useCameraPermissions()
-  const { settings, addHistoryItem } = useAppState()
+  const tabBarSpace = useTabBarSpace()
+  const [permission, requestPermission, getPermission] = useCameraPermissions()
+  const { settings, addHistoryItem, isDark, toggleTheme } = useAppState()
+  const [cameraEnabled, setCameraEnabled] = useState(true)
   const [torchEnabled, setTorchEnabled] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [payload, setPayload] = useState('')
   const [result, setResult] = useState<ScanResult | null>(null)
   const [resultOpen, setResultOpen] = useState(false)
   const scanLock = useRef(false)
+
+  const laserAnim = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        void getPermission()
+      }
+    })
+    return () => {
+      subscription.remove()
+    }
+  }, [getPermission])
+
+  // Continuous scanning laser animation
+  useEffect(() => {
+    if (!cameraEnabled || !permission?.granted || resultOpen) return
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(laserAnim, {
+          toValue: 1,
+          duration: 2000,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(laserAnim, {
+          toValue: 0,
+          duration: 2000,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    )
+    anim.start()
+    return () => anim.stop()
+  }, [cameraEnabled, laserAnim, permission?.granted, resultOpen])
+
+  const laserTranslateY = laserAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [14, 230],
+  })
 
   const inspect = useCallback(
     async (raw: string) => {
@@ -49,10 +123,7 @@ export default function ScannerScreen() {
         addHistoryItem(parsed.raw, scanResult)
       } catch (error) {
         scanLock.current = false
-        Alert.alert(
-          'Scan failed',
-          error instanceof Error ? error.message : 'Unable to analyze this QR payload.',
-        )
+        Alert.alert('Scan failed', error instanceof Error ? error.message : 'Unable to analyze this QR payload.')
       } finally {
         setScanning(false)
       }
@@ -118,137 +189,258 @@ export default function ScannerScreen() {
 
   return (
     <Screen>
-      <View style={styles.container}>
-        {isActive && permission?.granted && (
-          <CameraView
-            style={StyleSheet.absoluteFill}
-            facing="back"
-            enableTorch={torchEnabled}
-            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-            onBarcodeScanned={resultOpen || scanning ? undefined : handleBarcode}
-          />
-        )}
-        <View pointerEvents="none" style={styles.cameraTint} />
-
-        <View style={styles.header}>
-          <Text style={styles.brand}>AMANE <Text style={styles.brandAccent}>DZ</Text></Text>
-          <View style={styles.securePill}><Text style={styles.secureText}>QR SAFETY SCANNER</Text></View>
-        </View>
+      <View style={[styles.container, { paddingBottom: tabBarSpace }]}>
+        <ScreenHeader
+          title="AMANE DZ"
+          leading={<Image source={images.brandMark} style={styles.brandMark} />}
+          action={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+              onPress={toggleTheme}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.themeToggle,
+                isDark ? styles.themeToggleDark : styles.themeToggleLight,
+                pressed && styles.pressedThemeToggle,
+              ]}
+            >
+              <AppIcon
+                name={isDark ? 'moon' : 'sunny'}
+                size={16}
+                color={isDark ? '#70B7FF' : '#FF9F0A'}
+              />
+              <AppText variant="caption" style={[styles.themeToggleText, { color: isDark ? '#F2F5FF' : '#0F172A' }]}>
+                {isDark ? 'Dark' : 'Light'}
+              </AppText>
+            </Pressable>
+          }
+        />
 
         {settings.demoMode && (
           <View style={styles.demoSection}>
             <View style={styles.demoHeader}>
               <SectionTitle>Test QR Payloads</SectionTitle>
-              <Text style={styles.demoLabel}>DEMO MODE</Text>
+              <AppText variant="label" style={styles.demoLabel}>DEMO MODE</AppText>
             </View>
             <View style={styles.demoButtons}>
-              <DemoButton title="Apple.com" tone={colors.safe} onPress={() => void inspect(demoPayloads.safe)} />
-              <DemoButton title="Phishing" tone={colors.danger} onPress={() => void inspect(demoPayloads.phishing)} />
-              <DemoButton title="Wi-Fi" tone={colors.warning} onPress={() => void inspect(demoPayloads.wifi)} />
+              <DemoButton title="Apple.com" icon="safe" tone="success" onPress={() => void inspect(demoPayloads.safe)} />
+              <DemoButton title="Phishing" icon="danger" tone="danger" onPress={() => void inspect(demoPayloads.phishing)} />
+              <DemoButton title="Wi-Fi" icon="wifi" tone="warning" onPress={() => void inspect(demoPayloads.wifi)} />
             </View>
           </View>
         )}
 
         <View style={styles.scannerArea}>
           {!permission?.granted ? (
-            <View style={styles.permissionCard}>
-              <Text style={styles.permissionTitle}>Camera access needed</Text>
-              <Text style={styles.permissionDescription}>Allow camera access to scan QR codes on your device.</Text>
-              <ActionButton
-                title={permission?.canAskAgain === false ? 'Open phone settings to allow camera' : 'Allow camera'}
-                onPress={() => {
-                  if (permission?.canAskAgain === false) {
-                    Alert.alert('Camera permission blocked', 'Allow camera access for AMANE DZ in your phone settings.')
-                  } else {
-                    void requestPermission().catch((error: unknown) =>
-                      Alert.alert('Camera permission failed', error instanceof Error ? error.message : 'Unable to request camera access.'),
+            <PermissionCard
+              title="Camera access needed"
+              message="Allow camera access to scan QR codes on your device."
+              actionLabel="Allow Camera"
+              onAction={() => {
+                void requestPermission().then((res) => {
+                  if (res && !res.granted && res.canAskAgain === false) {
+                    void Linking.openSettings().catch((error: unknown) =>
+                      Alert.alert(
+                        'Unable to open settings',
+                        error instanceof Error ? error.message : 'Open camera permissions in system settings.',
+                      ),
                     )
                   }
-                }}
-              />
-            </View>
+                }).catch((error: unknown) =>
+                  Alert.alert(
+                    'Camera permission failed',
+                    error instanceof Error ? error.message : 'Unable to request camera access.',
+                  ),
+                )
+              }}
+              onOpenSettings={() => {
+                void Linking.openSettings().catch((error: unknown) =>
+                  Alert.alert(
+                    'Unable to open settings',
+                    error instanceof Error ? error.message : 'Open camera permissions in system settings.',
+                  ),
+                )
+              }}
+            />
           ) : (
             <>
-              <View style={styles.viewfinder}>
-                <View style={[styles.corner, styles.cornerTopLeft]} />
-                <View style={[styles.corner, styles.cornerTopRight]} />
-                <View style={[styles.corner, styles.cornerBottomLeft]} />
-                <View style={[styles.corner, styles.cornerBottomRight]} />
-                <View style={styles.scanLine} />
+              {/* Confined QR Code Camera Viewfinder */}
+              <View style={[styles.viewfinder, !isDark && styles.viewfinderLight]}>
+                {isActive && cameraEnabled ? (
+                  <CameraView
+                    style={StyleSheet.absoluteFill}
+                    facing="back"
+                    enableTorch={torchEnabled}
+                    barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+                    onBarcodeScanned={resultOpen || scanning ? undefined : handleBarcode}
+                  />
+                ) : (
+                  <View style={styles.cameraPausedWrap}>
+                    <AppIcon name="camera" size={38} color={isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.35)'} />
+                    <AppText
+                      variant="caption"
+                      color={isDark ? colors.textMuted : 'rgba(71,85,105,0.85)'}
+                      style={styles.cameraPausedText}
+                    >
+                      Camera is paused
+                    </AppText>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setCameraEnabled(true)}
+                      style={styles.resumeCameraBtn}
+                    >
+                      <AppIcon name="camera" size={14} color="#FFFFFF" />
+                      <AppText variant="label" color="#FFFFFF">Open Camera</AppText>
+                    </Pressable>
+                  </View>
+                )}
+
+                {/* Viewfinder corner accents */}
+                <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+                  <View style={[styles.corner, styles.cornerTopLeft]} />
+                  <View style={[styles.corner, styles.cornerTopRight]} />
+                  <View style={[styles.corner, styles.cornerBottomLeft]} />
+                  <View style={[styles.corner, styles.cornerBottomRight]} />
+
+                  {/* Animated scanning laser line */}
+                  {isActive && cameraEnabled && !resultOpen && (
+                    <Animated.View
+                      style={[
+                        styles.animatedLaserWrap,
+                        { transform: [{ translateY: laserTranslateY }] },
+                      ]}
+                    >
+                      <View style={styles.laserBeam} />
+                      <View style={styles.laserGlow} />
+                    </Animated.View>
+                  )}
+                </View>
               </View>
-              <View style={styles.statusPill}>
-                <Text style={styles.statusText}>{scanning ? 'Analyzing payload…' : 'Align QR code within frame'}</Text>
-              </View>
+
+              <Chip
+                icon={scanning ? 'pulse' : 'scanner'}
+                label={scanning ? 'Analyzing payload…' : cameraEnabled ? 'Align QR code within frame' : 'Camera is closed'}
+                tone={scanning ? 'accent' : 'neutral'}
+                style={styles.statusPill}
+              />
             </>
           )}
         </View>
 
         <View style={styles.controls}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={torchEnabled ? 'Turn torch off' : 'Turn torch on'}
+          <GlassButton
+            label="Light"
+            icon={torchEnabled ? 'flashOn' : 'flash'}
             onPress={() => setTorchEnabled((enabled) => !enabled)}
+            disabled={!permission?.granted || !cameraEnabled}
+            style={styles.controlButton}
+          />
+          <GlassButton
+            label={cameraEnabled ? 'Close Cam' : 'Open Cam'}
+            icon={cameraEnabled ? 'close' : 'camera'}
+            onPress={() => {
+              setCameraEnabled((prev) => {
+                if (prev) setTorchEnabled(false)
+                return !prev
+              })
+            }}
             disabled={!permission?.granted}
-            style={[styles.controlButton, !permission?.granted && styles.controlDisabled]}
-          >
-            <Text style={[styles.controlIcon, torchEnabled && { color: colors.warning }]}>ϟ</Text>
-            <Text style={styles.controlLabel}>Light</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => void chooseImage()} style={styles.controlButton}>
-            <Text style={styles.controlIcon}>▧</Text>
-            <Text style={styles.controlLabel}>Image</Text>
-          </Pressable>
+            style={styles.controlButton}
+          />
+          <GlassButton
+            label="Image"
+            icon="image"
+            onPress={() => void chooseImage()}
+            style={styles.controlButton}
+          />
         </View>
       </View>
 
       <Modal visible={resultOpen && result !== null} transparent animationType="slide" onRequestClose={closeResult}>
         {result && (
           <View style={styles.modalBackdrop}>
-            <View style={styles.resultSheet}>
-              <View style={styles.sheetHandle} />
+            <GlassCard
+              rounded="xl"
+              intensity={60}
+              style={[
+                styles.resultSheet,
+                !isDark && styles.resultSheetLight,
+              ]}
+            >
+              <View style={[styles.sheetHandle, !isDark && styles.sheetHandleLight]} />
               <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={styles.resultHeading}>
                   <View style={styles.resultCopy}>
-                    <VerdictBadge verdict={result.verdict} />
-                    <Text style={styles.resultTitle}>{resultTitle[result.verdict]}</Text>
-                    <Text style={styles.score}>Risk score: {result.score}/100</Text>
+                    <VerdictBadge verdict={result.verdict} size="large" />
+                    <AppText variant="heading" style={[styles.resultTitle, !isDark && { color: '#0F172A' }]}>
+                      {resultTitle[result.verdict]}
+                    </AppText>
+                    <AppText variant="caption" color={isDark ? colors.textMuted : 'rgba(71,85,105,0.85)'}>
+                      Risk score: {result.score}/100
+                    </AppText>
                   </View>
-                  <Pressable accessibilityLabel="Close result" onPress={closeResult} hitSlop={12}>
-                    <Text style={styles.closeText}>✕</Text>
+                  <Pressable
+                    accessibilityLabel="Close result"
+                    onPress={closeResult}
+                    hitSlop={12}
+                    style={[styles.closeButton, !isDark && styles.closeButtonLight]}
+                  >
+                    <AppIcon name="close" size={20} color={isDark ? colors.textMuted : '#0F172A'} />
                   </Pressable>
                 </View>
-                <Text style={styles.summary}>{result.summary}</Text>
 
-                <Card style={styles.payloadCard}>
+                <AppText variant="body" style={[styles.summary, !isDark && { color: '#1E293B' }]}>
+                  {result.summary}
+                </AppText>
+
+                <GlassCard style={styles.payloadCard}>
                   <View style={styles.payloadHeader}>
-                    <Text style={styles.detailLabel}>DECODED PAYLOAD</Text>
-                    <Pressable accessibilityRole="button" onPress={() => void copyPayload()}>
-                      <Text style={styles.copyText}>Copy</Text>
+                    <AppText variant="label" color={isDark ? colors.textMuted : 'rgba(71,85,105,0.85)'}>
+                      DECODED PAYLOAD
+                    </AppText>
+                    <Pressable accessibilityRole="button" onPress={() => void copyPayload()} style={styles.copyButton}>
+                      <AppIcon name="copy" size={13} color={colors.accent} />
+                      <AppText variant="caption" color={colors.accent} style={{ fontWeight: '700' }}>
+                        Copy
+                      </AppText>
                     </Pressable>
                   </View>
-                  <Text selectable style={styles.payloadText}>{payload}</Text>
-                </Card>
+                  <AppText selectable variant="body" style={[styles.payloadText, !isDark && { color: '#0F172A' }]}>
+                    {payload}
+                  </AppText>
+                </GlassCard>
 
                 <SectionTitle>Security diagnostics</SectionTitle>
                 <View style={styles.diagnostics}>
-                  <Diagnostic label="SSL State" value={result.ssl} />
-                  <Diagnostic label="Domain Age" value={result.domainAge} />
-                  <Diagnostic label="Redirects" value={result.redirects} />
-                  <Diagnostic label="Reputation" value={result.reputation} />
+                  <Diagnostic label="SSL State" value={result.ssl} icon="lock" />
+                  <Diagnostic label="Domain Age" value={result.domainAge} icon="globe" />
+                  <Diagnostic label="Redirects" value={result.redirects} icon="link" />
+                  <Diagnostic label="Reputation" value={result.reputation} icon="shield" />
                 </View>
-                <Card style={styles.destination}>
-                  <Text style={styles.detailLabel}>RESOLVED DESTINATION</Text>
-                  <Text selectable style={styles.destinationText}>{result.resolvedUrl || 'Not available'}</Text>
-                </Card>
+
+                <GlassCard style={styles.destination}>
+                  <View style={styles.destinationHeader}>
+                    <AppIcon name="link" size={14} color={colors.accent} />
+                    <AppText variant="label" color={isDark ? colors.textMuted : 'rgba(71,85,105,0.85)'}>
+                      RESOLVED DESTINATION
+                    </AppText>
+                  </View>
+                  <AppText selectable variant="body" style={styles.destinationText}>
+                    {result.resolvedUrl || 'Not available'}
+                  </AppText>
+                </GlassCard>
+
                 <ActionButton
-                  title={result.verdict === 'DANGEROUS' ? 'Block & Protect Device' : 'Review Payload'}
+                  icon={result.verdict === 'DANGEROUS' ? 'shield' : 'open'}
+                  title={result.verdict === 'DANGEROUS' ? 'Block & Protect Device' : 'Open Link'}
                   onPress={() => void openPayload()}
                 />
                 <View style={styles.dismiss}>
-                  <ActionButton title="Dismiss Preview" secondary onPress={closeResult} />
+                  <ActionButton icon="close" title="Dismiss Preview" secondary onPress={closeResult} />
                 </View>
               </ScrollView>
-            </View>
+            </GlassCard>
           </View>
         )}
       </Modal>
@@ -256,20 +448,24 @@ export default function ScannerScreen() {
   )
 }
 
-function DemoButton({ title, tone, onPress }: { title: string; tone: string; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={[styles.demoButton, { borderColor: `${tone}60` }]}>
-      <Text style={[styles.demoButtonText, { color: tone }]}>{title}</Text>
-    </Pressable>
-  )
+function DemoButton({ title, icon, tone, onPress }: { title: string; icon?: IconName; tone: Tone; onPress: () => void }) {
+  return <Chip label={title} icon={icon} tone={tone} onPress={onPress} style={styles.demoButton} />
 }
 
-function Diagnostic({ label, value }: { label: string; value: string }) {
+function Diagnostic({ label, value, icon }: { label: string; value: string; icon: IconName }) {
+  const { isDark } = useAppState()
   return (
-    <Card style={styles.diagnostic}>
-      <Text style={styles.diagnosticLabel}>{label}</Text>
-      <Text style={styles.diagnosticValue}>{value}</Text>
-    </Card>
+    <GlassCard style={styles.diagnostic}>
+      <View style={styles.diagnosticHeader}>
+        <AppIcon name={icon} size={14} color={colors.accent} />
+        <AppText variant="caption" color={isDark ? colors.textMuted : 'rgba(71,85,105,0.85)'}>
+          {label}
+        </AppText>
+      </View>
+      <AppText variant="label" style={[styles.diagnosticValue, !isDark && { color: '#0F172A' }]}>
+        {value}
+      </AppText>
+    </GlassCard>
   )
 }
 
@@ -279,46 +475,40 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingBottom: 18,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
   },
-  cameraTint: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(5, 9, 17, 0.62)',
+  brandMark: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
   },
-  header: {
-    zIndex: 1,
+  themeToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 10,
-  },
-  brand: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  brandAccent: {
-    color: colors.accent,
-  },
-  securePill: {
-    paddingHorizontal: 10,
+    gap: 6,
+    paddingHorizontal: 12,
     paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: '#0A84FF55',
     borderRadius: 20,
-    backgroundColor: '#0A84FF1A',
+    borderWidth: 1,
   },
-  secureText: {
-    color: '#70B7FF',
-    fontSize: 9,
+  themeToggleDark: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+  },
+  themeToggleLight: {
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    borderColor: 'rgba(0, 0, 0, 0.12)',
+  },
+  themeToggleText: {
     fontWeight: '700',
-    letterSpacing: 0.7,
+    letterSpacing: 0.4,
+  },
+  pressedThemeToggle: {
+    opacity: 0.72,
   },
   demoSection: {
     zIndex: 1,
-    gap: 5,
+    gap: 8,
     marginTop: 18,
   },
   demoHeader: {
@@ -341,11 +531,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderWidth: 1,
     borderRadius: 13,
-    backgroundColor: '#10141D',
-  },
-  demoButtonText: {
-    fontSize: 11,
-    fontWeight: '700',
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
   scannerArea: {
     zIndex: 1,
@@ -353,33 +539,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  permissionCard: {
-    width: '100%',
-    gap: 12,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 18,
-    backgroundColor: '#10141D',
-  },
-  permissionTitle: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  permissionDescription: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 19,
-  },
   viewfinder: {
     width: 260,
     height: 260,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.28)',
+    borderRadius: 28,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#FFFFFF45',
-    borderRadius: 32,
+  },
+  viewfinderLight: {
+    borderColor: 'rgba(0, 0, 0, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  cameraPausedWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+  },
+  cameraPausedText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  resumeCameraBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
+    marginTop: 6,
   },
   corner: {
     position: 'absolute',
@@ -392,80 +587,76 @@ const styles = StyleSheet.create({
     left: -1,
     borderTopWidth: 4,
     borderLeftWidth: 4,
-    borderTopLeftRadius: 16,
+    borderTopLeftRadius: 18,
   },
   cornerTopRight: {
     top: -1,
     right: -1,
     borderTopWidth: 4,
     borderRightWidth: 4,
-    borderTopRightRadius: 16,
+    borderTopRightRadius: 18,
   },
   cornerBottomLeft: {
     bottom: -1,
     left: -1,
     borderBottomWidth: 4,
     borderLeftWidth: 4,
-    borderBottomLeftRadius: 16,
+    borderBottomLeftRadius: 18,
   },
   cornerBottomRight: {
     bottom: -1,
     right: -1,
     borderBottomWidth: 4,
     borderRightWidth: 4,
-    borderBottomRightRadius: 16,
+    borderBottomRightRadius: 18,
   },
-  scanLine: {
-    width: '84%',
-    height: 2,
+  animatedLaserWrap: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    height: 18,
+    justifyContent: 'center',
+  },
+  laserBeam: {
+    width: '100%',
+    height: 2.5,
     backgroundColor: colors.accent,
+    borderRadius: 2,
     shadowColor: colors.accent,
-    shadowOpacity: 0.9,
-    shadowRadius: 9,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  laserGlow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 16,
+    backgroundColor: withAlpha(colors.accent, 0.22),
+    borderRadius: 8,
   },
   statusPill: {
     marginTop: 18,
     paddingHorizontal: 13,
     paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#FFFFFF30',
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF1A',
-  },
-  statusText: {
-    color: '#E6EAF2',
-    fontSize: 11,
-    fontWeight: '600',
+    alignSelf: 'center',
   },
   controls: {
     zIndex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 42,
+    gap: 14,
     paddingBottom: 8,
   },
   controlButton: {
-    minWidth: 68,
-    alignItems: 'center',
-    gap: 3,
-  },
-  controlDisabled: {
-    opacity: 0.45,
-  },
-  controlIcon: {
-    color: colors.text,
-    fontSize: 24,
-  },
-  controlLabel: {
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: '600',
+    flex: 1,
   },
   modalBackdrop: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: '#000000A6',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
   },
   resultSheet: {
     maxHeight: '90%',
@@ -474,7 +665,13 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    backgroundColor: '#10141D',
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    backgroundColor: 'rgba(12, 18, 44, 0.95)',
+  },
+  resultSheetLight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.97)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   sheetHandle: {
     alignSelf: 'center',
@@ -483,6 +680,9 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     borderRadius: 4,
     backgroundColor: '#545B69',
+  },
+  sheetHandleLight: {
+    backgroundColor: '#CBD5E1',
   },
   resultHeading: {
     flexDirection: 'row',
@@ -496,21 +696,35 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   resultTitle: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
   },
-  score: {
-    color: colors.muted,
-    fontSize: 12,
+  closeButton: {
+    padding: 8,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  closeText: {
-    color: colors.muted,
-    fontSize: 19,
+  closeButtonLight: {
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  diagnosticHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  destinationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
   },
   summary: {
     marginBottom: 14,
-    color: '#D8DCE5',
     fontSize: 13,
     lineHeight: 19,
   },
@@ -523,19 +737,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 9,
   },
-  detailLabel: {
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-  },
-  copyText: {
-    color: '#70B7FF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
   payloadText: {
-    color: colors.text,
     fontFamily: 'monospace',
     fontSize: 12,
     lineHeight: 18,
@@ -553,13 +755,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
-  diagnosticLabel: {
-    color: colors.muted,
-    fontSize: 10,
-  },
   diagnosticValue: {
     marginTop: 3,
-    color: colors.text,
     fontSize: 11,
     fontWeight: '700',
   },
@@ -569,7 +766,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   destinationText: {
-    color: '#70B7FF',
+    color: colors.accent,
     fontFamily: 'monospace',
     fontSize: 11,
     lineHeight: 16,

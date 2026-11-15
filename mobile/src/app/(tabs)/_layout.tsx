@@ -1,29 +1,51 @@
 import { Tabs } from 'expo-router'
-import { Text } from 'react-native'
-
-const icons = { index: '▦', history: '◷', settings: '⚙' } as const
+import { Easing } from 'react-native'
+import { GlassTabBar } from '@/ui'
 
 export default function TabsLayout() {
   return (
     <Tabs
-      screenOptions={({ route }) => ({
+      tabBar={(props) => (
+        <GlassTabBar
+          {...props}
+          icons={{
+            index: { active: 'home', inactive: 'homeOutline' },
+            history: { active: 'historyFilled', inactive: 'history' },
+            settings: { active: 'settingsFilled', inactive: 'settings' },
+          }}
+        />
+      )}
+      screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#0A84FF',
-        tabBarInactiveTintColor: '#7D8492',
-        tabBarStyle: {
-          backgroundColor: '#10141D',
-          borderTopColor: '#252B37',
-          height: 66,
-          paddingTop: 7,
-          paddingBottom: 8,
+        sceneStyle: { backgroundColor: 'transparent' },
+        tabBarStyle: { position: 'absolute', backgroundColor: 'transparent', borderTopWidth: 0 },
+        animation: 'shift',
+        transitionSpec: {
+          animation: 'timing',
+          config: {
+            duration: 260,
+            easing: Easing.out(Easing.cubic),
+          },
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-        tabBarIcon: ({ color, size }) => (
-          <Text style={{ color, fontSize: size, fontWeight: '600' }}>{icons[route.name as keyof typeof icons]}</Text>
-        ),
-      })}
+        sceneStyleInterpolator: ({ current }) => ({
+          sceneStyle: {
+            opacity: current.progress.interpolate({
+              inputRange: [-1, 0, 1],
+              outputRange: [0, 1, 0],
+            }),
+            transform: [
+              {
+                translateX: current.progress.interpolate({
+                  inputRange: [-1, 0, 1],
+                  outputRange: [-90, 0, 90],
+                }),
+              },
+            ],
+          },
+        }),
+      }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Scanner' }} />
+      <Tabs.Screen name="index" options={{ title: 'Homepage' }} />
       <Tabs.Screen name="history" options={{ title: 'History' }} />
       <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
     </Tabs>
