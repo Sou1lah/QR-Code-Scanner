@@ -37,6 +37,14 @@
         {
           "photosPermission": "Allow AMANE DZ to scan QR codes from images."
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#070b14",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 250
+        }
       ]
     ],
     "experiments": {

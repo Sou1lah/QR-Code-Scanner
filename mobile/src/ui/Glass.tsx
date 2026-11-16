@@ -73,6 +73,16 @@ function GlassCardBase({ intensity = 45, tone, rounded = 'lg', style, children, 
       />
     </View>
   )
+  const lightInnerBorder = !isDark ? (
+    <View
+      pointerEvents="none"
+      style={[
+        StyleSheet.absoluteFill,
+        styles.lightInnerBorder,
+        { borderRadius: Math.max(0, radius[rounded] - 1) },
+      ]}
+    />
+  ) : null
 
   // Reduced quality mode (Android < 31 or missing blur target on Android)
   if (quality === 'reduced' || (Platform.OS === 'android' && !target)) {
@@ -95,6 +105,7 @@ function GlassCardBase({ intensity = 45, tone, rounded = 'lg', style, children, 
         />
         {specularHighlight}
         {children}
+        {lightInnerBorder}
       </View>
     )
   }
@@ -110,6 +121,7 @@ function GlassCardBase({ intensity = 45, tone, rounded = 'lg', style, children, 
     >
       {specularHighlight}
       {children}
+      {lightInnerBorder}
     </BlurView>
   )
 }
@@ -146,5 +158,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
+  },
+  lightInnerBorder: {
+    position: 'absolute',
+    top: 1,
+    right: 1,
+    bottom: 1,
+    left: 1,
+    borderWidth: 1,
+    borderColor: glassSheen.light.innerBorder,
   },
 })

@@ -1,10 +1,10 @@
 import { Tabs } from 'expo-router'
-import { Easing } from 'react-native'
 import { GlassTabBar } from '@/ui'
 
 export default function TabsLayout() {
   return (
     <Tabs
+      detachInactiveScreens={false}
       tabBar={(props) => (
         <GlassTabBar
           {...props}
@@ -17,15 +17,12 @@ export default function TabsLayout() {
       )}
       screenOptions={{
         headerShown: false,
-        sceneStyle: { backgroundColor: 'transparent' },
-        tabBarStyle: { position: 'absolute', backgroundColor: 'transparent', borderTopWidth: 0 },
-        animation: 'shift',
+        lazy: true,
+        freezeOnBlur: true,
+        animation: 'fade',
         transitionSpec: {
           animation: 'timing',
-          config: {
-            duration: 260,
-            easing: Easing.out(Easing.cubic),
-          },
+          config: { duration: 200 },
         },
         sceneStyleInterpolator: ({ current }) => ({
           sceneStyle: {
@@ -35,17 +32,19 @@ export default function TabsLayout() {
             }),
             transform: [
               {
-                translateX: current.progress.interpolate({
+                translateY: current.progress.interpolate({
                   inputRange: [-1, 0, 1],
-                  outputRange: [-90, 0, 90],
+                  outputRange: [10, 0, -10],
                 }),
               },
             ],
           },
         }),
+        sceneStyle: { backgroundColor: 'transparent' },
+        tabBarStyle: { position: 'absolute', backgroundColor: 'transparent', borderTopWidth: 0 },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Homepage' }} />
+      <Tabs.Screen name="index" options={{ title: 'Home' }} />
       <Tabs.Screen name="history" options={{ title: 'History' }} />
       <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
     </Tabs>

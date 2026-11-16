@@ -58,6 +58,9 @@ if (!existsSync(gradleWrapper)) {
   console.error('Expo prebuild did not create the Android Gradle wrapper.')
   process.exit(1)
 }
+mkdirSync(join(androidDirectory, 'app', 'build', 'intermediates', 'sourcemaps', 'react', 'debug'), {
+  recursive: true,
+})
 run(
   gradleWrapper,
   [

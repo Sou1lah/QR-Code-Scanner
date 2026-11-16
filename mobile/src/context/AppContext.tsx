@@ -28,10 +28,11 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [settings, setSettings] = useState(defaultSettings)
   const [isDark, setIsDark] = useState(true)
   const [history, setHistory] = useState<HistoryItem[]>([])
-  const [ready, setReady] = useState(true)
+  const [ready, setReady] = useState(false)
   const hasLoaded = useRef(false)
 
   useEffect(() => {
+    const startTime = Date.now()
     let active = true
     void (async () => {
       try {
@@ -58,7 +59,10 @@ export function AppProvider({ children }: PropsWithChildren) {
         console.error('Unable to restore saved app data.', error)
       } finally {
         hasLoaded.current = true
-        if (active) setReady(true)
+        if (active) {
+          setReady(true)
+          console.log('[perf] AppContext ready in', Date.now() - startTime, 'ms')
+        }
       }
     })()
     return () => {

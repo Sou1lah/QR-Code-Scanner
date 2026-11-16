@@ -1,21 +1,29 @@
 import { CameraView, scanFromURLAsync, useCameraPermissions } from 'expo-camera'
 import * as Clipboard from 'expo-clipboard'
 import * as ImagePicker from 'expo-image-picker'
-import { usePathname } from 'expo-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useIsFocused } from 'expo-router'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   Alert,
-  Animated,
   AppState,
-  Easing,
   Image,
   Linking,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from 'react-native'
+import {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated'
+import Reanimated from 'react-native-reanimated'
+import Svg, { Rect } from 'react-native-svg'
 import type { BarcodeScanningResult } from 'expo-camera'
 import {
   ActionButton,
@@ -23,7 +31,6 @@ import {
   AppText,
   Chip,
   colors,
-  GlassButton,
   GlassCard,
   images,
   PermissionCard,
@@ -42,6 +49,7 @@ import { parsePayload } from '@/lib/parsePayload'
 import { demoPayloads } from '@/services/mock'
 import { scanPayload } from '@/services/api'
 import type { ScanResult } from '@/types/api'
+import { triggerScanResultHaptic } from '@/utils/haptics'
 
 const resultTitle = {
   SAFE: 'Safe & Verified Payload',
@@ -49,22 +57,78 @@ const resultTitle = {
   DANGEROUS: 'Malicious Threat Detected',
 } as const
 
-export default function ScannerScreen() {
-  const pathname = usePathname()
-  const isActive = pathname === '/'
+const SCAN_READ_DELAY_MS = 1200
+const VIEWFINDER_HEIGHT = 270
+const LASER_WRAP_HEIGHT = 18
+
+function ScannerScreen() {
+  const isFocused = useIsFocused()
   const tabBarSpace = useTabBarSpace()
   const [permission, requestPermission, getPermission] = useCameraPermissions()
-  const { settings, addHistoryItem, isDark, toggleTheme } = useAppState()
+  const { settings, addHistoryItem, isDark } = useAppState()
   const [cameraEnabled, setCameraEnabled] = useState(true)
   const [torchEnabled, setTorchEnabled] = useState(false)
   const [scanning, setScanning] = useState(false)
+  const [reading, setReading] = useState(false)
+  const [checking, setChecking] = useState(false)
   const [payload, setPayload] = useState('')
   const [result, setResult] = useState<ScanResult | null>(null)
   const [resultOpen, setResultOpen] = useState(false)
   const scanLock = useRef(false)
 
-  const laserAnim = useRef(new Animated.Value(0)).current
+  // Active camera flag — mounted only while Home is focused, user-enabled, and permission granted
+  const cameraIsOpen = isFocused && cameraEnabled && Boolean(permission?.granted)
 
+  // Guard against double start / double stop
+  const openCamera = useCallback(() => {
+    if (!permission?.granted || cameraEnabled) return
+    setCameraEnabled(true)
+  }, [cameraEnabled, permission?.granted])
+
+  const closeCamera = useCallback(() => {
+    if (!cameraEnabled) return
+    setCameraEnabled(false)
+    setTorchEnabled(false)
+  }, [cameraEnabled])
+
+  // Stop camera on unmount guard
+  useEffect(() => {
+    return () => {
+      setCameraEnabled(false)
+      setTorchEnabled(false)
+    }
+  }, [])
+
+  // Reanimated scan laser (continuous ping-pong, canceled ONLY on unmount)
+  const scanY = useSharedValue(0)
+  const scanOpacity = useSharedValue(1)
+
+  useEffect(() => {
+    scanY.value = withRepeat(
+      withTiming(VIEWFINDER_HEIGHT - LASER_WRAP_HEIGHT, { duration: 1800 }),
+      -1,
+      true,
+    )
+    return () => {
+      cancelAnimation(scanY)
+    }
+  }, [scanY])
+
+  // Dim it (do not cancel) while a scan is being processed or camera is off
+  useEffect(() => {
+    if (scanning || !cameraIsOpen) {
+      scanOpacity.value = withTiming(0.25, { duration: 250 })
+    } else {
+      scanOpacity.value = withTiming(1, { duration: 250 })
+    }
+  }, [cameraIsOpen, scanning, scanOpacity])
+
+  const laserAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: scanY.value }],
+    opacity: scanOpacity.value,
+  }))
+
+  // AppState listener — refresh permissions when app comes to foreground
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') {
@@ -76,34 +140,7 @@ export default function ScannerScreen() {
     }
   }, [getPermission])
 
-  // Continuous scanning laser animation
-  useEffect(() => {
-    if (!cameraEnabled || !permission?.granted || resultOpen) return
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(laserAnim, {
-          toValue: 1,
-          duration: 2000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(laserAnim, {
-          toValue: 0,
-          duration: 2000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]),
-    )
-    anim.start()
-    return () => anim.stop()
-  }, [cameraEnabled, laserAnim, permission?.granted, resultOpen])
-
-  const laserTranslateY = laserAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [14, 230],
-  })
-
+  // Task 6 — Full scan flow with reading + checking states
   const inspect = useCallback(
     async (raw: string) => {
       if (scanLock.current) return
@@ -116,16 +153,28 @@ export default function ScannerScreen() {
       scanLock.current = true
       setPayload(parsed.raw)
       setScanning(true)
+      setReading(true)
+      setChecking(false)
       try {
+        // Step 1: show "Reading QR code…" for at least 1200ms
+        await new Promise<void>((resolve) => setTimeout(resolve, SCAN_READ_DELAY_MS))
+        setReading(false)
+        // Step 2: show "Checking link safety…"
+        setChecking(true)
+        // Step 3: await scan
         const scanResult = await scanPayload(parsed.raw, settings)
+        setChecking(false)
+        void triggerScanResultHaptic(scanResult.verdict)
         setResult(scanResult)
         setResultOpen(true)
         addHistoryItem(parsed.raw, scanResult)
       } catch (error) {
         scanLock.current = false
+        setChecking(false)
         Alert.alert('Scan failed', error instanceof Error ? error.message : 'Unable to analyze this QR payload.')
       } finally {
         setScanning(false)
+        setReading(false)
       }
     },
     [addHistoryItem, settings],
@@ -133,9 +182,11 @@ export default function ScannerScreen() {
 
   const handleBarcode = useCallback(
     (event: BarcodeScanningResult) => {
+      // Task 5: Drive scan action from active flag; ignore if camera is off, locked, or processing
+      if (!cameraIsOpen || scanLock.current || resultOpen || scanning) return
       void inspect(event.data)
     },
-    [inspect],
+    [cameraIsOpen, inspect, resultOpen, scanning],
   )
 
   const chooseImage = async () => {
@@ -164,7 +215,8 @@ export default function ScannerScreen() {
   const openPayload = async () => {
     if (!result) return
     if (result.verdict === 'DANGEROUS') {
-      Alert.alert('Blocked for your safety', 'This payload was marked dangerous and was not opened.')
+      closeResult()
+      Alert.alert('Blocked for your safety', 'This malicious link was blocked from opening.')
       return
     }
     if (!/^https?:\/\//i.test(result.resolvedUrl)) {
@@ -187,34 +239,23 @@ export default function ScannerScreen() {
     }
   }
 
+  // Task 6 — chip label logic
+  const chipLabel = reading
+    ? 'Reading QR code…'
+    : checking
+      ? 'Checking link safety…'
+      : scanning
+        ? 'Analyzing payload…'
+        : cameraIsOpen
+          ? 'Align QR code within frame'
+          : 'Camera is closed'
+
   return (
     <Screen>
       <View style={[styles.container, { paddingBottom: tabBarSpace }]}>
         <ScreenHeader
           title="AMANE DZ"
           leading={<Image source={images.brandMark} style={styles.brandMark} />}
-          action={
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Switch to ${isDark ? 'light' : 'dark'} mode`}
-              onPress={toggleTheme}
-              hitSlop={8}
-              style={({ pressed }) => [
-                styles.themeToggle,
-                isDark ? styles.themeToggleDark : styles.themeToggleLight,
-                pressed && styles.pressedThemeToggle,
-              ]}
-            >
-              <AppIcon
-                name={isDark ? 'moon' : 'sunny'}
-                size={16}
-                color={isDark ? '#70B7FF' : '#FF9F0A'}
-              />
-              <AppText variant="caption" style={[styles.themeToggleText, { color: isDark ? '#F2F5FF' : '#0F172A' }]}>
-                {isDark ? 'Dark' : 'Light'}
-              </AppText>
-            </Pressable>
-          }
         />
 
         {settings.demoMode && (
@@ -267,17 +308,21 @@ export default function ScannerScreen() {
             <>
               {/* Confined QR Code Camera Viewfinder */}
               <View style={[styles.viewfinder, !isDark && styles.viewfinderLight]}>
-                {isActive && cameraEnabled ? (
+                {cameraIsOpen ? (
                   <CameraView
                     style={StyleSheet.absoluteFill}
                     facing="back"
                     enableTorch={torchEnabled}
                     barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-                    onBarcodeScanned={resultOpen || scanning ? undefined : handleBarcode}
+                    onBarcodeScanned={
+                      cameraIsOpen && !scanLock.current && !resultOpen && !scanning
+                        ? handleBarcode
+                        : undefined
+                    }
                   />
                 ) : (
                   <View style={styles.cameraPausedWrap}>
-                    <AppIcon name="camera" size={38} color={isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.35)'} />
+                    <AppIcon name="camera" size={40} color={isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.35)'} />
                     <AppText
                       variant="caption"
                       color={isDark ? colors.textMuted : 'rgba(71,85,105,0.85)'}
@@ -287,40 +332,63 @@ export default function ScannerScreen() {
                     </AppText>
                     <Pressable
                       accessibilityRole="button"
-                      onPress={() => setCameraEnabled(true)}
-                      style={styles.resumeCameraBtn}
+                      accessibilityLabel="Open camera"
+                      onPress={() => {
+                        if (permission?.granted) setCameraEnabled(true)
+                      }}
+                      style={({ pressed }) => [
+                        styles.resumeCameraBtn,
+                        pressed && styles.resumeCameraBtnPressed,
+                      ]}
                     >
-                      <AppIcon name="camera" size={14} color="#FFFFFF" />
-                      <AppText variant="label" color="#FFFFFF">Open Camera</AppText>
+                      <AppIcon name="camera" size={15} color="#FFFFFF" />
+                      <Text style={styles.resumeCameraBtnText}>OPEN CAMERA</Text>
                     </Pressable>
                   </View>
                 )}
 
-                {/* Viewfinder corner accents */}
+                {/* Viewfinder corner accents & watermark guide */}
                 <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+                  {/* Subtle QR guide watermark */}
+                  {cameraIsOpen && (
+                    <View style={styles.qrWatermarkWrap}>
+                      <Svg width={120} height={120} viewBox="0 0 96 96">
+                        <Rect x={4} y={4} width={32} height={32} rx={8} fill="none" stroke={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'} strokeWidth={4} />
+                        <Rect x={12} y={12} width={16} height={16} rx={4} fill={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'} />
+                        <Rect x={60} y={4} width={32} height={32} rx={8} fill="none" stroke={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'} strokeWidth={4} />
+                        <Rect x={68} y={12} width={16} height={16} rx={4} fill={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'} />
+                        <Rect x={4} y={60} width={32} height={32} rx={8} fill="none" stroke={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'} strokeWidth={4} />
+                        <Rect x={12} y={68} width={16} height={16} rx={4} fill={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'} />
+                        <Rect x={44} y={12} width={8} height={20} rx={4} fill={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'} />
+                        <Rect x={44} y={40} width={8} height={16} rx={4} fill={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'} />
+                        <Rect x={64} y={44} width={24} height={8} rx={4} fill={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'} />
+                        <Rect x={64} y={64} width={10} height={10} rx={5} fill={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'} />
+                        <Rect x={80} y={64} width={10} height={10} rx={5} fill={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'} />
+                        <Rect x={64} y={80} width={10} height={10} rx={5} fill={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'} />
+                        <Rect x={80} y={80} width={10} height={10} rx={5} fill={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)'} />
+                      </Svg>
+                    </View>
+                  )}
+
+                  {/* Perfectly rounded corner brackets */}
                   <View style={[styles.corner, styles.cornerTopLeft]} />
                   <View style={[styles.corner, styles.cornerTopRight]} />
                   <View style={[styles.corner, styles.cornerBottomLeft]} />
                   <View style={[styles.corner, styles.cornerBottomRight]} />
 
-                  {/* Animated scanning laser line */}
-                  {isActive && cameraEnabled && !resultOpen && (
-                    <Animated.View
-                      style={[
-                        styles.animatedLaserWrap,
-                        { transform: [{ translateY: laserTranslateY }] },
-                      ]}
-                    >
+                  {/* Reanimated scanning laser line — only when camera is active */}
+                  {cameraIsOpen && !resultOpen && (
+                    <Reanimated.View style={[styles.animatedLaserWrap, laserAnimatedStyle]}>
                       <View style={styles.laserBeam} />
                       <View style={styles.laserGlow} />
-                    </Animated.View>
+                    </Reanimated.View>
                   )}
                 </View>
               </View>
 
               <Chip
                 icon={scanning ? 'pulse' : 'scanner'}
-                label={scanning ? 'Analyzing payload…' : cameraEnabled ? 'Align QR code within frame' : 'Camera is closed'}
+                label={chipLabel}
                 tone={scanning ? 'accent' : 'neutral'}
                 style={styles.statusPill}
               />
@@ -328,32 +396,44 @@ export default function ScannerScreen() {
           )}
         </View>
 
+        {/* Centered two-button controls (Light & Image icons only) */}
         <View style={styles.controls}>
-          <GlassButton
-            label="Light"
-            icon={torchEnabled ? 'flashOn' : 'flash'}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={torchEnabled ? 'Turn off light' : 'Turn on light'}
             onPress={() => setTorchEnabled((enabled) => !enabled)}
-            disabled={!permission?.granted || !cameraEnabled}
-            style={styles.controlButton}
-          />
-          <GlassButton
-            label={cameraEnabled ? 'Close Cam' : 'Open Cam'}
-            icon={cameraEnabled ? 'close' : 'camera'}
-            onPress={() => {
-              setCameraEnabled((prev) => {
-                if (prev) setTorchEnabled(false)
-                return !prev
-              })
-            }}
-            disabled={!permission?.granted}
-            style={styles.controlButton}
-          />
-          <GlassButton
-            label="Image"
-            icon="image"
+            disabled={!cameraIsOpen}
+            style={({ pressed }) => [
+              styles.iconButton,
+              !isDark && styles.iconButtonLight,
+              torchEnabled && styles.iconButtonActive,
+              !cameraIsOpen && styles.iconButtonDisabled,
+              pressed && styles.iconButtonPressed,
+            ]}
+          >
+            <AppIcon
+              name={torchEnabled ? 'flashOn' : 'flash'}
+              size={22}
+              color={torchEnabled ? '#FFFFFF' : isDark ? colors.accent : '#0A84FF'}
+            />
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Scan QR from gallery image"
             onPress={() => void chooseImage()}
-            style={styles.controlButton}
-          />
+            style={({ pressed }) => [
+              styles.iconButton,
+              !isDark && styles.iconButtonLight,
+              pressed && styles.iconButtonPressed,
+            ]}
+          >
+            <AppIcon
+              name="image"
+              size={22}
+              color={isDark ? colors.accent : '#0A84FF'}
+            />
+          </Pressable>
         </View>
       </View>
 
@@ -413,10 +493,15 @@ export default function ScannerScreen() {
 
                 <SectionTitle>Security diagnostics</SectionTitle>
                 <View style={styles.diagnostics}>
-                  <Diagnostic label="SSL State" value={result.ssl} icon="lock" />
+                  {/* Task 6 — renamed labels + mapped values */}
+                  <Diagnostic
+                    label="HTTPS"
+                    value={result.ssl === 'Valid SSL' ? 'Protected' : 'Not secured'}
+                    icon="lock"
+                  />
                   <Diagnostic label="Domain Age" value={result.domainAge} icon="globe" />
                   <Diagnostic label="Redirects" value={result.redirects} icon="link" />
-                  <Diagnostic label="Reputation" value={result.reputation} icon="shield" />
+                  <Diagnostic label="Blocklist" value={result.reputation} icon="shield" />
                 </View>
 
                 <GlassCard style={styles.destination}>
@@ -431,9 +516,10 @@ export default function ScannerScreen() {
                   </AppText>
                 </GlassCard>
 
+                {/* Task 6 — shorter action button label */}
                 <ActionButton
                   icon={result.verdict === 'DANGEROUS' ? 'shield' : 'open'}
-                  title={result.verdict === 'DANGEROUS' ? 'Block & Protect Device' : 'Open Link'}
+                  title={result.verdict === 'DANGEROUS' ? 'Block link' : 'Open link'}
                   onPress={() => void openPayload()}
                 />
                 <View style={styles.dismiss}>
@@ -482,30 +568,6 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 14,
   },
-  themeToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  themeToggleDark: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderColor: 'rgba(255, 255, 255, 0.18)',
-  },
-  themeToggleLight: {
-    backgroundColor: 'rgba(0, 0, 0, 0.06)',
-    borderColor: 'rgba(0, 0, 0, 0.12)',
-  },
-  themeToggleText: {
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
-  pressedThemeToggle: {
-    opacity: 0.72,
-  },
   demoSection: {
     zIndex: 1,
     gap: 8,
@@ -540,20 +602,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   viewfinder: {
-    width: 260,
-    height: 260,
+    width: 270,
+    height: 270,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.28)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 28,
     overflow: 'hidden',
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(4, 7, 18, 0.7)',
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
   },
   viewfinderLight: {
-    borderColor: 'rgba(0, 0, 0, 0.15)',
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderColor: 'rgba(0, 0, 0, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.65)',
+  },
+  qrWatermarkWrap: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
   },
   cameraPausedWrap: {
     alignItems: 'center',
@@ -562,67 +631,82 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   cameraPausedText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
   },
   resumeCameraBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    gap: 8,
+    paddingHorizontal: 22,
+    paddingVertical: 10,
     borderRadius: radius.pill,
-    backgroundColor: colors.accent,
-    marginTop: 6,
+    backgroundColor: '#0A84FF',
+    marginTop: 10,
+    shadowColor: '#0A84FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  resumeCameraBtnPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.96 }],
+  },
+  resumeCameraBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12,
+    letterSpacing: 0.8,
   },
   corner: {
     position: 'absolute',
-    width: 36,
-    height: 36,
-    borderColor: colors.accent,
+    width: 44,
+    height: 44,
+    borderColor: '#0A84FF',
   },
   cornerTopLeft: {
-    top: -1,
-    left: -1,
+    top: 0,
+    left: 0,
     borderTopWidth: 4,
     borderLeftWidth: 4,
-    borderTopLeftRadius: 18,
+    borderTopLeftRadius: 28,
   },
   cornerTopRight: {
-    top: -1,
-    right: -1,
+    top: 0,
+    right: 0,
     borderTopWidth: 4,
     borderRightWidth: 4,
-    borderTopRightRadius: 18,
+    borderTopRightRadius: 28,
   },
   cornerBottomLeft: {
-    bottom: -1,
-    left: -1,
+    bottom: 0,
+    left: 0,
     borderBottomWidth: 4,
     borderLeftWidth: 4,
-    borderBottomLeftRadius: 18,
+    borderBottomLeftRadius: 28,
   },
   cornerBottomRight: {
-    bottom: -1,
-    right: -1,
+    bottom: 0,
+    right: 0,
     borderBottomWidth: 4,
     borderRightWidth: 4,
-    borderBottomRightRadius: 18,
+    borderBottomRightRadius: 28,
   },
   animatedLaserWrap: {
     position: 'absolute',
-    left: 12,
-    right: 12,
-    height: 18,
+    left: 14,
+    right: 14,
+    height: LASER_WRAP_HEIGHT,
     justifyContent: 'center',
   },
   laserBeam: {
     width: '100%',
     height: 2.5,
-    backgroundColor: colors.accent,
+    backgroundColor: '#0A84FF',
     borderRadius: 2,
-    shadowColor: colors.accent,
+    shadowColor: '#0A84FF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 10,
@@ -632,26 +716,54 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    height: 16,
-    backgroundColor: withAlpha(colors.accent, 0.22),
-    borderRadius: 8,
+    height: 18,
+    backgroundColor: 'rgba(10, 132, 255, 0.28)',
+    borderRadius: 9,
   },
   statusPill: {
-    marginTop: 18,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
+    marginTop: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     alignSelf: 'center',
+    borderRadius: radius.pill,
   },
   controls: {
     zIndex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 14,
-    paddingBottom: 8,
+    gap: 24,
+    paddingBottom: 16,
   },
-  controlButton: {
-    flex: 1,
+  iconButton: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  iconButtonLight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+  },
+  iconButtonActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  iconButtonDisabled: {
+    opacity: 0.35,
+  },
+  iconButtonPressed: {
+    transform: [{ scale: 0.94 }],
+    opacity: 0.85,
   },
   modalBackdrop: {
     flex: 1,
@@ -775,3 +887,5 @@ const styles = StyleSheet.create({
     marginTop: 9,
   },
 })
+
+export default memo(ScannerScreen)

@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
-import { Animated, Easing, LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native'
+import { useEffect, useRef } from 'react'
+import { Animated, Pressable, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { BottomTabBarProps } from 'expo-router/tabs'
 import { AppIcon, type IconName } from './AppIcon'
 import { AppText } from './AppText'
 import { GlassCard } from './Glass'
-import { colors, radius, space, withAlpha } from './theme'
+import { colors, radius, space } from './theme'
 import { useAppState } from '@/context/AppContext'
+import { useReducedMotion } from './useReducedMotion'
+import { triggerTabPressHaptic } from '@/utils/haptics'
 
 export const TAB_BAR_HEIGHT = 68
 
@@ -32,47 +34,23 @@ const DEFAULT_TAB_ICONS: Record<string, TabIconConfig> = {
   settings: { active: 'settingsFilled', inactive: 'settings' },
 }
 
-const INDICATOR_WIDTH = 28
+const TAB_SPRING = {
+  damping: 28,
+  stiffness: 280,
+  mass: 1,
+  useNativeDriver: true,
+}
 
 export function GlassTabBar({ state, descriptors, emitter, navigateToTab, icons = DEFAULT_TAB_ICONS }: Props) {
   const { bottom } = useSafeAreaInsets()
   const { isDark } = useAppState()
-  const [barWidth, setBarWidth] = useState(0)
-
-  const slideAnim = useRef(new Animated.Value(state.index)).current
-
-  useEffect(() => {
-    Animated.timing(slideAnim, {
-      toValue: state.index,
-      duration: 260,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start()
-  }, [state.index, slideAnim])
-
-  const onLayout = (e: LayoutChangeEvent) => {
-    const width = e.nativeEvent.layout.width
-    if (width > 0 && width !== barWidth) {
-      setBarWidth(width)
-    }
-  }
-
-  const numTabs = Math.max(1, state.routes.length)
-  const tabWidth = barWidth > 0 ? barWidth / numTabs : 0
-
-  const indicatorTranslateX = tabWidth > 0
-    ? slideAnim.interpolate({
-        inputRange: state.routes.map((_, i) => i),
-        outputRange: state.routes.map((_, i) => i * tabWidth + (tabWidth - INDICATOR_WIDTH) / 2),
-      })
-    : 0
+  const reducedMotion = useReducedMotion()
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { paddingBottom: Math.max(bottom, space.sm) + space.xs }]}>
       <GlassCard
         rounded="xl"
         intensity={65}
-        onLayout={onLayout}
         style={[
           styles.bar,
           isDark
@@ -80,23 +58,12 @@ export function GlassTabBar({ state, descriptors, emitter, navigateToTab, icons 
             : { backgroundColor: 'rgba(255, 255, 255, 0.88)', borderColor: 'rgba(0, 0, 0, 0.08)' },
         ]}
       >
-        {tabWidth > 0 && (
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.slidingIndicator,
-              {
-                transform: [{ translateX: indicatorTranslateX }],
-              },
-            ]}
-          />
-        )}
-
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key]
           const focused = state.index === index
           const rawLabel = typeof options.tabBarLabel === 'string' ? options.tabBarLabel : (options.title ?? route.name)
-          const label = rawLabel.toLowerCase() === 'index' ? 'Homepage' : rawLabel
+          const normalized = rawLabel.toLowerCase()
+          const label = normalized === 'index' || normalized === 'homepage' ? 'Home' : rawLabel
 
           const iconCfg = icons[route.name] ?? DEFAULT_TAB_ICONS[route.name] ?? { active: 'home', inactive: 'homeOutline' }
           const iconName: IconName = typeof iconCfg === 'string'
@@ -107,7 +74,10 @@ export function GlassTabBar({ state, descriptors, emitter, navigateToTab, icons 
 
           const onPress = () => {
             const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true })
-            if (!focused && !event.defaultPrevented) navigateToTab(route.key)
+            if (!event.defaultPrevented) {
+              void triggerTabPressHaptic()
+              if (!focused) navigateToTab(route.key)
+            }
           }
 
           const onLongPress = () => {
@@ -121,6 +91,7 @@ export function GlassTabBar({ state, descriptors, emitter, navigateToTab, icons 
               label={label}
               iconName={iconName}
               isDark={isDark}
+              reducedMotion={reducedMotion}
               onPress={onPress}
               onLongPress={onLongPress}
             />
@@ -136,6 +107,7 @@ function TabItem({
   label,
   iconName,
   isDark,
+  reducedMotion,
   onPress,
   onLongPress,
 }: {
@@ -143,19 +115,24 @@ function TabItem({
   label: string
   iconName: IconName
   isDark: boolean
+  reducedMotion: boolean
   onPress: () => void
   onLongPress: () => void
 }) {
   const anim = useRef(new Animated.Value(focused ? 1 : 0)).current
 
   useEffect(() => {
-    Animated.timing(anim, {
+    if (reducedMotion) {
+      anim.stopAnimation()
+      anim.setValue(focused ? 1 : 0)
+      return
+    }
+
+    Animated.spring(anim, {
       toValue: focused ? 1 : 0,
-      duration: 260,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      ...TAB_SPRING,
     }).start()
-  }, [focused, anim])
+  }, [focused, anim, reducedMotion])
 
   const iconScale = anim.interpolate({
     inputRange: [0, 1],
@@ -165,6 +142,11 @@ function TabItem({
   const activeOpacity = anim.interpolate({
     inputRange: [0, 1],
     outputRange: [0.5, 1],
+  })
+
+  const indicatorOpacity = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
   })
 
   const inactiveColor = isDark ? 'rgba(235, 240, 255, 0.45)' : 'rgba(30, 41, 59, 0.55)'
@@ -179,6 +161,16 @@ function TabItem({
       hitSlop={6}
       style={styles.item}
     >
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.activeIndicator,
+          {
+            opacity: indicatorOpacity,
+            transform: [{ scaleX: anim }],
+          },
+        ]}
+      />
       <Animated.View
         style={[
           styles.iconWrap,
@@ -223,14 +215,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
   },
-  slidingIndicator: {
-    position: 'absolute',
-    top: 6,
-    left: 0,
-    width: INDICATOR_WIDTH,
+  activeIndicator: {
+    width: 26,
     height: 3,
-    borderRadius: 2,
+    borderRadius: 1.5,
     backgroundColor: colors.accent,
+    marginBottom: 4,
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.8,
@@ -241,7 +231,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: 4,
   },
   iconWrap: {
     alignItems: 'center',

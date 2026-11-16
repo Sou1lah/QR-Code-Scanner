@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native'
 import { AppText, Card, colors, PageHeader, Screen, SectionTitle, ToggleRow, useTabBarSpace } from '@/ui'
 import { useAppState } from '@/context/AppContext'
@@ -7,7 +7,7 @@ import type { ScanSettings } from '@/types/api'
 
 type ApiStatus = 'checking' | 'connected' | 'offline'
 
-export default function SettingsScreen() {
+function SettingsScreen() {
   const { settings, setSetting, setDemoMode, isDark, toggleTheme } = useAppState()
   const tabBarSpace = useTabBarSpace()
   const [apiStatus, setApiStatus] = useState<ApiStatus>('checking')
@@ -110,6 +110,8 @@ export default function SettingsScreen() {
     </Screen>
   )
 }
+
+export default memo(SettingsScreen)
 
 const styles = StyleSheet.create({
   content: {

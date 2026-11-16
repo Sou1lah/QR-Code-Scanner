@@ -1,4 +1,5 @@
 export { AppIcon, type IconName } from './AppIcon'
+export { BootOverlay } from './BootOverlay'
 export { AppText } from './AppText'
 export { GlassCard, GlassRoot } from './Glass'
 export { GlassTabBar, useTabBarSpace } from './GlassTabBar'

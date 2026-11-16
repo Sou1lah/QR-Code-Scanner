@@ -1,9 +1,10 @@
+import { memo } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { AppIcon, AppText, Card, colors, PageHeader, Screen, useTabBarSpace, VerdictBadge } from '@/ui'
 import { useAppState } from '@/context/AppContext'
 import type { HistoryItem } from '@/types/api'
 
-export default function HistoryScreen() {
+function HistoryScreen() {
   const { history, clearHistory } = useAppState()
   const tabBarSpace = useTabBarSpace()
 
@@ -53,6 +54,8 @@ export default function HistoryScreen() {
     </Screen>
   )
 }
+
+export default memo(HistoryScreen)
 
 function HistoryCard({ item }: { item: HistoryItem }) {
   const isUrl = /^https?:\/\//i.test(item.raw)
