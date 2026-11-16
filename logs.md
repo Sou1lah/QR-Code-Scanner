@@ -180,6 +180,11 @@
      - Instant parallel hydration with `AppContext` `Promise.all`.
      - Smooth 260 ms exit fade and unmount.
 
-7. **Standalone APK Build**:
-   - Executed `npm run apk` producing standalone debug APK at `dist/AMANE-DZ-debug.apk`.
-   - Verified installation to connected emulator.
+7. **Standalone APK Build & Live Simulation Verification**:
+   - Executed `npm run apk` producing standalone debug APK at `dist/AMANE-DZ-debug.apk` (202 MB, multi-ABI: `arm64-v8a`, `armeabi-v7a`, `x86_64`).
+   - Automatically installed via `adb install -r` to connected Android emulator (`emulator-5554`).
+   - Verified live in simulation: launched `dz.amane.app/.MainActivity` and captured screenshot confirming all UI updates (centered icon buttons, corner alignment, QR watermark, header cleanup, and active tab indicator).
+
+8. **Developer Onboarding & Project Rules (`RULES.md`)**:
+   - Created comprehensive project rules and developer onboarding document at `RULES.md` and `mobile/RULES.md`.
+   - Outlines architecture navigation, design tokens, UI rules, simulation workflows, APK build instructions, and core safety constraints.
