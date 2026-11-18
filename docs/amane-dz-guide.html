@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AMANE DZ — App & Developer Guide</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #172033;
+      background: #e8edf5;
+      font: 9pt/1.35 "DejaVu Sans", Arial, sans-serif;
+    }
+    .page {
+      position: relative;
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      padding: 14mm 16mm 17mm;
+      background: #fff;
+      page-break-after: always;
+      break-after: page;
+    }
+    .page:last-child { page-break-after: auto; break-after: auto; }
+    .cover {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: #eef5ff;
+      background: #08111f;
+    }
+    .cover:before, .cover:after {
+      position: absolute;
+      border: 1px solid rgba(95, 173, 255, .16);
+      border-radius: 50%;
+      content: "";
+    }
+    .cover:before { top: -50mm; right: -40mm; width: 160mm; height: 160mm; }
+    .cover:after { top: -32mm; right: -22mm; width: 124mm; height: 124mm; }
+    .cover-content, .cover-footer { position: relative; z-index: 1; }
+    .eyebrow {
+      color: #63adff;
+      font-size: 8pt;
+      font-weight: 700;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+    }
+    h1 { margin: 13mm 0 3mm; font-size: 35pt; line-height: 1.08; letter-spacing: -1.3px; }
+    h2 { margin: 0 0 3mm; color: #0c1930; font-size: 20pt; line-height: 1.15; letter-spacing: -.5px; }
+    h3 { margin: 3mm 0 1.2mm; color: #142846; font-size: 10.5pt; }
+    p { margin: 1mm 0 1.8mm; }
+    .lead { max-width: 145mm; color: #b7c8df; font-size: 14pt; line-height: 1.5; }
+    .cover-note { max-width: 148mm; padding: 5mm; border-left: 3px solid #0a84ff; color: #ccdaeb; background: rgba(255,255,255,.05); }
+    .brand-mark {
+      display: flex; width: 29mm; height: 29mm; align-items: center; justify-content: center;
+      border: 1px solid rgba(92,175,255,.55); border-radius: 9mm; background: rgba(10,132,255,.13);
+    }
+    .brand-mark svg { width: 19mm; height: 19mm; }
+    .cover-footer { color: #8094af; font-size: 8pt; }
+    .topline {
+      display: flex; justify-content: space-between; margin-bottom: 6mm;
+      color: #6480a1; font-size: 8pt; letter-spacing: 1px; text-transform: uppercase;
+    }
+    .muted { color: #5f6f85; }
+    .small { font-size: 8pt; }
+    .tiny { font-size: 7pt; }
+    .grid { display: flex; gap: 3mm; }
+    .card {
+      flex: 1; margin: 1mm 0; padding: 2.5mm;
+      border: 1px solid #e1e8f1; border-radius: 3mm; background: #f8faff;
+    }
+    .card h3 { margin-top: 0; }
+    .callout {
+      margin: 1.8mm 0; padding: 2.2mm 2.8mm;
+      border-left: 3px solid #0a84ff; border-radius: 1mm; background: #edf6ff;
+    }
+    .warning { border-left-color: #ff9f0a; background: #fff7e8; }
+    .success { border-left-color: #30a46c; background: #edfbf3; }
+    pre {
+      margin: 1.5mm 0; padding: 2.2mm 2.6mm; border-radius: 2mm;
+      color: #e7effb; background: #101b2c;
+      font: 7.3pt/1.42 "DejaVu Sans Mono", monospace;
+      white-space: pre-wrap; overflow-wrap: anywhere;
+    }
+    pre.ascii { color: #164c82; background: #eef6ff; border: 1px solid #d5e8fb; }
+    code { color: #0756a3; font: 7.8pt "DejaVu Sans Mono", monospace; overflow-wrap: anywhere; }
+    ol, ul { margin: 1mm 0 1.5mm; padding-left: 5.5mm; }
+    li { margin: .55mm 0; }
+    table { width: 100%; margin: 1.5mm 0; border-collapse: collapse; font-size: 7.6pt; }
+    th { padding: 1.5mm; color: #fff; background: #173253; text-align: left; }
+    td { padding: 1.5mm; border-bottom: 1px solid #e3eaf3; vertical-align: top; }
+    .two-col { display: flex; align-items: flex-start; gap: 5mm; }
+    .two-col > * { flex: 1; min-width: 0; }
+    .phone-figure { margin: 0; text-align: center; }
+    .phone-figure svg { display: block; width: 100%; max-height: 119mm; margin: 0 auto; }
+    .phone-figure figcaption { margin-top: 1mm; color: #60718a; font-size: 7pt; }
+    .screen-pair { display: flex; justify-content: center; gap: 6mm; }
+    .screen-pair figure { width: 49%; margin: 0; }
+    .screen-pair svg { width: 100%; max-height: 107mm; }
+    .flow {
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 3mm 0; padding: 2.5mm; border-radius: 2mm;
+      color: #12355c; background: #eef6ff; font-size: 7.6pt; font-weight: 700; text-align: center;
+    }
+    .flow span { flex: 1; }
+    .flow b { color: #0a84ff; font-size: 13pt; }
+    .footer {
+      position: absolute; right: 16mm; bottom: 8mm; left: 16mm;
+      display: flex; justify-content: space-between; padding-top: 1.4mm;
+      border-top: 1px solid #e5ebf3; color: #75849a; font-size: 7pt;
+    }
+    .cover .footer { color: #8094af; border-color: rgba(255,255,255,.15); }
+    .mono { font-family: "DejaVu Sans Mono", monospace; }
+    .tag { display: inline-block; padding: .5mm 1.5mm; border-radius: 5mm; color: #0756a3; background: #e6f2ff; font-size: 7pt; font-weight: 700; }
+    .source { color: #516784; font-size: 7pt; }
+    .source code { font-size: 7pt; }
+    a { color: #0756a3; }
+    .svg-wide { width: 100%; height: auto; margin: 1mm 0; }
+    @media print {
+      body { background: white; }
+      .page { width: 210mm; min-height: 297mm; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <section class="page cover">
+    <div class="cover-content">
+      <div class="eyebrow">A friendly guide · Android development · Source-code tour</div>
+      <div style="height:16mm"></div>
+      <div class="brand-mark" aria-label="QR scan icon">
+        <svg viewBox="0 0 100 100" fill="none" stroke="#77bdff" stroke-width="7">
+          <path d="M12 38V12h26M62 12h26v26M88 62v26H62M38 88H12V62"/>
+          <path d="M26 26h12v12H26zM62 26h12v12H62zM26 62h12v12H26z" fill="#77bdff"/>
+          <path d="M52 24v16m0 8v7m-12 0h9m11 0h17M51 62v10m12-8h14v14H63z"/>
+        </svg>
+      </div>
+      <h1>AMANE DZ</h1>
+      <p class="lead">QR safety scanner<br>What you see, where the code lives, and how to run it</p>
+      <div style="height:13mm"></div>
+      <div class="cover-note">
+        <strong>In this guide</strong><br>
+        A visual tour of the real mobile screens, camera and image scanning, decoded QR data, safety review,
+        history, settings, backend requests, and a command-line Android emulator setup with a side-by-side workflow.
+      </div>
+    </div>
+    <div class="cover-footer">
+      Screen drawings and code excerpts are based on the React Native app in <span class="mono">mobile/</span>.<br>
+      AMANE DZ · Developer &amp; user guide · November 2026
+    </div>
+    <div class="footer"><span>AMANE DZ · APP GUIDE</span><span>01</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"><span>01 · App map</span><span>Meet the screens</span></div>
+    <h2>One app, three tabs</h2>
+    <p>AMANE DZ is an Expo / React Native app in <code>mobile/</code>. It opens on <strong>Home</strong>, the QR scanner. History and Settings are two tabs in the same app; the older browser/PWA in <code>src/</code> is separate.</p>
+    <div class="two-col">
+      <figure class="phone-figure">
+        <svg viewBox="0 0 340 650" role="img" aria-label="Illustration of the AMANE DZ scanner screen">
+          <rect x="7" y="5" width="326" height="640" rx="38" fill="#080d19" stroke="#52617b" stroke-width="3"/>
+          <rect x="18" y="16" width="304" height="618" rx="30" fill="#02030f"/>
+          <text x="35" y="42" fill="#f2f5ff" font-size="12" font-family="Arial">9:41</text>
+          <text x="286" y="42" fill="#b9c9dd" font-size="11" font-family="Arial">●  ▰</text>
+          <rect x="32" y="62" width="38" height="38" rx="12" fill="#0c1a31" stroke="#25486c"/>
+          <path d="M41 78v-8h8m7 0h8v8m0 8v8h-8m-7 0h-8v-8" fill="none" stroke="#58adff" stroke-width="2.5"/>
+          <text x="80" y="83" fill="#f2f5ff" font-size="20" font-weight="700" font-family="Arial">AMANE DZ</text>
+          <rect x="42" y="133" width="256" height="256" rx="28" fill="#111b2b" stroke="#68778d"/>
+          <path d="M69 113h31m-31 0v31m217-31h-31m31 0v31M69 409h31m-31 0v-31m217 31h-31m31 0v-31" fill="none" stroke="#55aaff" stroke-width="4" stroke-linecap="round"/>
+          <g fill="none" stroke="#d7e6f6" stroke-width="4" opacity=".8">
+            <rect x="105" y="187" width="48" height="48" rx="7"/><rect x="117" y="199" width="24" height="24" rx="3"/>
+            <rect x="187" y="187" width="48" height="48" rx="7"/><rect x="199" y="199" width="24" height="24" rx="3"/>
+            <rect x="105" y="269" width="48" height="48" rx="7"/><rect x="117" y="281" width="24" height="24" rx="3"/>
+          </g>
+          <path d="M91 249h157" stroke="#48aaff" stroke-width="3"/>
+          <path d="M91 249h157" stroke="#48aaff" stroke-width="12" opacity=".14"/>
+          <text x="170" y="430" text-anchor="middle" fill="#dbe7f6" font-size="12" font-family="Arial">Align QR code within frame</text>
+          <circle cx="128" cy="493" r="28" fill="#101b2d" stroke="#33445d"/>
+          <circle cx="212" cy="493" r="28" fill="#101b2d" stroke="#33445d"/>
+          <text x="128" y="501" text-anchor="middle" fill="#57adff" font-size="23" font-family="Arial">ϟ</text>
+          <text x="212" y="501" text-anchor="middle" fill="#57adff" font-size="21" font-family="Arial">▧</text>
+          <rect x="38" y="557" width="264" height="61" rx="28" fill="#111a2b" stroke="#344157"/>
+          <text x="84" y="585" text-anchor="middle" fill="#55aaff" font-size="17" font-family="Arial">⌂</text>
+          <text x="84" y="605" text-anchor="middle" fill="#f2f5ff" font-size="10" font-family="Arial">Home</text>
+          <text x="170" y="585" text-anchor="middle" fill="#9baac0" font-size="17" font-family="Arial">◷</text>
+          <text x="170" y="605" text-anchor="middle" fill="#9baac0" font-size="10" font-family="Arial">History</text>
+          <text x="256" y="585" text-anchor="middle" fill="#9baac0" font-size="17" font-family="Arial">⚙</text>
+          <text x="256" y="605" text-anchor="middle" fill="#9baac0" font-size="10" font-family="Arial">Settings</text>
+        </svg>
+        <figcaption>Home / Scanner · screen illustration from the actual layout and controls</figcaption>
+      </figure>
+      <div>
+        <div class="callout"><strong>Think of a QR code as a tiny note.</strong> The camera reads its text; AMANE shows that text and a risk review. It does not silently open the link.</div>
+        <table>
+          <tr><th>Tab</th><th>What you do there</th></tr>
+          <tr><td><strong>Home</strong></td><td>Scan with the rear camera, turn on the torch, or choose a QR image.</td></tr>
+          <tr><td><strong>History</strong></td><td>Review up to 100 saved payloads and verdicts on this device.</td></tr>
+          <tr><td><strong>Settings</strong></td><td>Choose theme and risk preferences, see Demo Mode and backend status.</td></tr>
+        </table>
+        <h3>How the app starts</h3>
+        <div class="flow">
+          <span>Expo Router<br><small>opens Home</small></span><b>›</b>
+          <span>AppContext<br><small>restores saved data</small></span><b>›</b>
+          <span>Scanner<br><small>asks before camera use</small></span>
+        </div>
+        <p class="small">The floating glass tab bar is defined in <code>mobile/src/app/(tabs)/_layout.tsx</code>. The root layout and shared app state are in <code>mobile/src/app/_layout.tsx</code> and <code>mobile/src/context/AppContext.tsx</code>.</p>
+        <p class="small muted">Illustrations in this guide are source-based drawings, not photos captured from a running phone.</p>
+      </div>
+    </div>
+    <div class="footer"><span>AMANE DZ · APP GUIDE</span><span>02</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"><span>02 · Camera scan</span><span>From permission to decoded text</span></div>
+    <h2>What happens when you point at a QR?</h2>
+    <div class="flow">
+      <span>Grant permission<br><small>only when asked</small></span><b>›</b>
+      <span>Camera reads QR<br><small>QR format only</small></span><b>›</b>
+      <span>Read &amp; analyze<br><small>duplicate-safe</small></span><b>›</b>
+      <span>Review result<br><small>you decide next</small></span>
+    </div>
+    <div class="two-col">
+      <div>
+        <h3>1 · The camera is gated</h3>
+        <p>The camera preview is mounted only when Home is focused, the user has enabled it, and Android has granted permission.</p>
+        <pre>const cameraIsOpen =
+  isFocused &amp;&amp;
+  cameraEnabled &amp;&amp;
+  Boolean(permission?.granted)</pre>
+        <p class="source"><code>mobile/src/app/(tabs)/index.tsx:80</code></p>
+        <h3>2 · Expo reads QR, not every barcode</h3>
+        <pre>&lt;CameraView
+  facing="back"
+  enableTorch={torchEnabled}
+  barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+  onBarcodeScanned={
+    cameraIsOpen &amp;&amp; !scanLock.current &amp;&amp; !resultOpen &amp;&amp; !scanning
+      ? handleBarcode
+      : undefined
+  }
+/&gt;</pre>
+        <p class="source"><code>mobile/src/app/(tabs)/index.tsx:312</code> · the surrounding view draws the corners, QR guide, and animated scan laser.</p>
+      </div>
+      <div>
+        <h3>3 · A lock prevents repeat scans</h3>
+        <p>Camera callbacks can fire more than once for the same visible code. <code>scanLock</code> lets only one inspection proceed; the lock is released when the result sheet closes.</p>
+        <p class="small muted">Core excerpt; payload validation and error handling are omitted here.</p>
+        <pre>if (scanLock.current) return
+scanLock.current = true
+setReading(true)
+await new Promise&lt;void&gt;((resolve) =&gt;
+  setTimeout(resolve, SCAN_READ_DELAY_MS)
+)
+setReading(false)
+setChecking(true)
+const scanResult = await scanPayload(parsed.raw, settings)
+setResult(scanResult)
+setResultOpen(true)
+addHistoryItem(parsed.raw, scanResult)</pre>
+        <p class="source"><code>mobile/src/app/(tabs)/index.tsx:144–180</code> · the app shows “Reading QR code…” before “Checking link safety…”.</p>
+      </div>
+    </div>
+    <h3>Permission: the normal path</h3>
+    <ol>
+      <li>Tap <strong>Allow Camera</strong> on Home.</li>
+      <li>Approve the Android system prompt while using the app.</li>
+      <li>If permission was denied, use <strong>Open Phone Settings</strong>, allow Camera, then return to the app.</li>
+    </ol>
+    <div class="callout warning"><strong>Emulator camera tip:</strong> a virtual camera may show a blank scene or have no usable torch. Use the gallery button for a predictable QR test; use a real phone to verify physical camera behavior.</div>
+    <p class="source">Runtime permission and app-resume refresh: <code>mobile/src/app/(tabs)/index.tsx</code>. Native permission text and scanner plugin: <code>mobile/app.json</code>.</p>
+    <div class="footer"><span>AMANE DZ · APP GUIDE</span><span>03</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"><span>03 · Image, decode &amp; review</span><span>QR data is just text until you act</span></div>
+    <h2>Scan a saved image, inspect the result</h2>
+    <div class="two-col">
+      <div>
+        <h3>Scan from Photos</h3>
+        <ol>
+          <li>Tap the picture button below the viewfinder.</li>
+          <li>Choose an image. Expo scans it for a QR code.</li>
+          <li>If no QR is found, the app explains that and lets you choose another image.</li>
+        </ol>
+        <pre>const selection = await ImagePicker.launchImageLibraryAsync({
+  mediaTypes: ['images'],
+  allowsEditing: false,
+})
+if (selection.canceled) return
+const codes = await scanFromURLAsync(selection.assets[0].uri, ['qr'])
+if (codes.length === 0) {
+  Alert.alert('No QR code found', ...)
+  return
+}
+void inspect(codes[0].data)</pre>
+        <p class="source"><code>mobile/src/app/(tabs)/index.tsx:192–210</code></p>
+        <h3>What is inside the QR?</h3>
+        <p><code>parsePayload</code> trims the text and classifies it:</p>
+        <table>
+          <tr><th>Starts with…</th><th>Class</th><th>Example use</th></tr>
+          <tr><td><code>https://</code> or <code>http://</code></td><td>URL</td><td>Website address</td></tr>
+          <tr><td><code>WIFI:</code></td><td>WIFI</td><td>Network name and security type</td></tr>
+          <tr><td>Anything else</td><td>TEXT</td><td>Plain text or other content</td></tr>
+        </table>
+        <p class="source">Parser: <code>mobile/src/lib/parsePayload.ts</code>. It extracts Wi-Fi fields <code>S</code> (SSID), <code>T</code> (authentication) and <code>P</code> (password) for the request.</p>
+      </div>
+      <figure class="phone-figure">
+        <svg viewBox="0 0 340 650" role="img" aria-label="Illustration of the scan result sheet">
+          <rect x="7" y="5" width="326" height="640" rx="38" fill="#080d19" stroke="#52617b" stroke-width="3"/>
+          <rect x="18" y="16" width="304" height="618" rx="30" fill="#111a2a"/>
+          <rect x="18" y="16" width="304" height="618" rx="30" fill="#02030f" opacity=".66"/>
+          <rect x="18" y="214" width="304" height="420" rx="28" fill="#101b2d" stroke="#60718a"/>
+          <rect x="145" y="226" width="50" height="5" rx="3" fill="#687891"/>
+          <text x="38" y="260" fill="#ff625b" font-size="17" font-weight="700" font-family="Arial">DANGEROUS</text>
+          <text x="38" y="283" fill="#f2f5ff" font-size="15" font-weight="700" font-family="Arial">Malicious Threat Detected</text>
+          <text x="38" y="303" fill="#aab9cf" font-size="11" font-family="Arial">Risk score: 98/100</text>
+          <text x="38" y="325" fill="#d8e2f1" font-size="9" font-family="Arial">Phishing: fake PayPal sign-in over HTTP.</text>
+          <rect x="34" y="345" width="272" height="67" rx="13" fill="#18253a" stroke="#34445c"/>
+          <text x="48" y="365" fill="#8fa3bf" font-size="9" font-family="Arial">DECODED PAYLOAD</text>
+          <text x="48" y="386" fill="#dce8f8" font-size="8" font-family="Arial">http://login.paypa1-security-check.com/verify</text>
+          <text x="48" y="402" fill="#55aaff" font-size="9" font-family="Arial">Copy</text>
+          <text x="37" y="439" fill="#aab9cf" font-size="10" font-family="Arial">SECURITY DIAGNOSTICS</text>
+          <rect x="34" y="449" width="130" height="48" rx="10" fill="#18253a"/><rect x="176" y="449" width="130" height="48" rx="10" fill="#18253a"/>
+          <rect x="34" y="505" width="130" height="48" rx="10" fill="#18253a"/><rect x="176" y="505" width="130" height="48" rx="10" fill="#18253a"/>
+          <text x="45" y="468" fill="#9fb1c9" font-size="8" font-family="Arial">HTTPS</text><text x="45" y="486" fill="#f2f5ff" font-size="10" font-family="Arial">Not secured</text>
+          <text x="187" y="468" fill="#9fb1c9" font-size="8" font-family="Arial">DOMAIN AGE</text><text x="187" y="486" fill="#f2f5ff" font-size="10" font-family="Arial">3 Days</text>
+          <text x="45" y="524" fill="#9fb1c9" font-size="8" font-family="Arial">REDIRECTS</text><text x="45" y="542" fill="#f2f5ff" font-size="9" font-family="Arial">Suspicious Domain</text>
+          <text x="187" y="524" fill="#9fb1c9" font-size="8" font-family="Arial">BLOCKLIST</text><text x="187" y="542" fill="#f2f5ff" font-size="9" font-family="Arial">Blacklisted (16/90)</text>
+          <rect x="34" y="563" width="272" height="34" rx="10" fill="#18253a"/>
+          <text x="47" y="577" fill="#9fb1c9" font-size="7" font-family="Arial">RESOLVED DESTINATION</text>
+          <text x="47" y="590" fill="#dce8f8" font-size="7" font-family="Arial">http://login.paypa1-security-check.com/verify?account_id=982</text>
+          <rect x="34" y="600" width="272" height="26" rx="12" fill="#321b25" stroke="#ff625b"/>
+          <text x="170" y="618" text-anchor="middle" fill="#ff8178" font-size="10" font-weight="700" font-family="Arial">Block link · not opened</text>
+        </svg>
+        <figcaption>Result-sheet drawing · labels and controls follow the real preview UI</figcaption>
+      </figure>
+    </div>
+    <h3>The preview protects the next step</h3>
+    <p>The sheet shows verdict, score, summary, decoded text, diagnostics and destination. Copying is separate from opening. A payload marked <strong>DANGEROUS</strong> is blocked by the open action; other links still require a deliberate tap.</p>
+    <pre>if (!result) return
+if (result.verdict === 'DANGEROUS') {
+  closeResult()
+  Alert.alert('Blocked for your safety', ...)
+  return
+}
+if (!/^https?:\/\//i.test(result.resolvedUrl)) {
+  Alert.alert('Payload ready for review', ...)
+  return
+}
+await Linking.openURL(result.resolvedUrl)</pre>
+    <p class="source"><code>mobile/src/app/(tabs)/index.tsx:215–244</code> · modal UI: <code>mobile/src/app/(tabs)/index.tsx:440+</code>.</p>
+    <div class="callout warning"><strong>Safety note:</strong> SAFE is a risk estimate, not proof that a website is harmless. Check unfamiliar addresses before sharing passwords or payment details.</div>
+    <div class="footer"><span>AMANE DZ · APP GUIDE</span><span>04</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"><span>04 · History &amp; settings</span><span>Saved on this device</span></div>
+    <h2>Two more screens, one shared state</h2>
+    <div class="screen-pair">
+      <figure class="phone-figure">
+        <svg viewBox="0 0 340 650" role="img" aria-label="Illustration of the History screen">
+          <rect x="7" y="5" width="326" height="640" rx="38" fill="#080d19" stroke="#52617b" stroke-width="3"/>
+          <rect x="18" y="16" width="304" height="618" rx="30" fill="#02030f"/>
+          <text x="35" y="42" fill="#f2f5ff" font-size="12" font-family="Arial">9:41</text>
+          <text x="35" y="95" fill="#f2f5ff" font-size="25" font-weight="700" font-family="Arial">History</text>
+          <text x="35" y="117" fill="#aab9cf" font-size="11" font-family="Arial">Scanned QR payload audit records</text>
+          <rect x="234" y="78" width="75" height="27" rx="12" fill="#321b25"/>
+          <text x="271" y="96" text-anchor="middle" fill="#ff756c" font-size="10" font-family="Arial">Clear all</text>
+          <rect x="30" y="148" width="280" height="87" rx="16" fill="#111b2d" stroke="#2b3c55"/>
+          <circle cx="58" cy="190" r="18" fill="#142e4a"/>
+          <text x="58" y="195" text-anchor="middle" fill="#57adff" font-size="17" font-family="Arial">↗</text>
+          <text x="87" y="177" fill="#aab9cf" font-size="9" font-family="Arial">2m ago</text>
+          <text x="87" y="198" fill="#eaf1fa" font-size="10" font-family="Arial">https://example.test/login</text>
+          <rect x="250" y="207" width="47" height="18" rx="8" fill="#4a3212"/>
+          <text x="273" y="220" text-anchor="middle" fill="#ffc15b" font-size="8" font-family="Arial">CAUTION</text>
+          <rect x="30" y="247" width="280" height="87" rx="16" fill="#111b2d" stroke="#2b3c55"/>
+          <circle cx="58" cy="290" r="18" fill="#142e4a"/>
+          <text x="58" y="295" text-anchor="middle" fill="#57adff" font-size="17" font-family="Arial">⌁</text>
+          <text x="87" y="276" fill="#aab9cf" font-size="9" font-family="Arial">1h ago</text>
+          <text x="87" y="297" fill="#eaf1fa" font-size="10" font-family="Arial">WIFI:S:Guest_Network;...</text>
+          <rect x="250" y="306" width="47" height="18" rx="8" fill="#123522"/>
+          <text x="273" y="319" text-anchor="middle" fill="#63dc8a" font-size="8" font-family="Arial">SAFE</text>
+          <rect x="38" y="557" width="264" height="61" rx="28" fill="#111a2b" stroke="#344157"/>
+          <text x="84" y="585" text-anchor="middle" fill="#9baac0" font-size="17" font-family="Arial">⌂</text><text x="84" y="605" text-anchor="middle" fill="#9baac0" font-size="10" font-family="Arial">Home</text>
+          <text x="170" y="585" text-anchor="middle" fill="#55aaff" font-size="17" font-family="Arial">◷</text><text x="170" y="605" text-anchor="middle" fill="#f2f5ff" font-size="10" font-family="Arial">History</text>
+          <text x="256" y="585" text-anchor="middle" fill="#9baac0" font-size="17" font-family="Arial">⚙</text><text x="256" y="605" text-anchor="middle" fill="#9baac0" font-size="10" font-family="Arial">Settings</text>
+        </svg>
+        <figcaption>History · newest saved scans first</figcaption>
+      </figure>
+      <figure class="phone-figure">
+        <svg viewBox="0 0 340 650" role="img" aria-label="Illustration of the Settings screen">
+          <rect x="7" y="5" width="326" height="640" rx="38" fill="#080d19" stroke="#52617b" stroke-width="3"/>
+          <rect x="18" y="16" width="304" height="618" rx="30" fill="#02030f"/>
+          <text x="35" y="42" fill="#f2f5ff" font-size="12" font-family="Arial">9:41</text>
+          <text x="35" y="95" fill="#f2f5ff" font-size="25" font-weight="700" font-family="Arial">Settings</text>
+          <text x="35" y="117" fill="#aab9cf" font-size="11" font-family="Arial">Threat engine &amp; security policies</text>
+          <text x="35" y="151" fill="#9fb1c9" font-size="9" font-family="Arial">THREAT PROTECTION</text>
+          <rect x="30" y="162" width="280" height="159" rx="16" fill="#111b2d" stroke="#2b3c55"/>
+          <text x="45" y="190" fill="#f2f5ff" font-size="11" font-family="Arial">Zero-Auto Action</text><text x="45" y="205" fill="#91a2ba" font-size="8" font-family="Arial">Always preview payload before launching</text><rect x="269" y="178" width="26" height="14" rx="7" fill="#126cbd"/>
+          <text x="45" y="236" fill="#f2f5ff" font-size="11" font-family="Arial">URL Shortener Unfurl</text><text x="45" y="251" fill="#91a2ba" font-size="8" font-family="Arial">Resolve shortlinks &amp; examine destination</text><rect x="269" y="224" width="26" height="14" rx="7" fill="#126cbd"/>
+          <text x="45" y="282" fill="#f2f5ff" font-size="11" font-family="Arial">Block Insecure HTTP</text><text x="45" y="297" fill="#91a2ba" font-size="8" font-family="Arial">Flag unencrypted website protocols</text><rect x="269" y="270" width="26" height="14" rx="7" fill="#126cbd"/>
+          <text x="35" y="350" fill="#9fb1c9" font-size="9" font-family="Arial">INTELLIGENCE SOURCES</text>
+          <rect x="30" y="360" width="280" height="74" rx="16" fill="#111b2d" stroke="#2b3c55"/>
+          <text x="45" y="389" fill="#f2f5ff" font-size="11" font-family="Arial">Safe Browsing API</text><text x="45" y="405" fill="#91a2ba" font-size="8" font-family="Arial">Real-time threat database lookup</text><rect x="269" y="379" width="26" height="14" rx="7" fill="#126cbd"/>
+          <text x="35" y="463" fill="#9fb1c9" font-size="9" font-family="Arial">APP</text>
+          <rect x="30" y="473" width="280" height="77" rx="16" fill="#111b2d" stroke="#2b3c55"/>
+          <text x="45" y="501" fill="#f2f5ff" font-size="11" font-family="Arial">Dark Mode</text><text x="45" y="517" fill="#91a2ba" font-size="8" font-family="Arial">Use glass dark appearance across screens</text><rect x="269" y="490" width="26" height="14" rx="7" fill="#126cbd"/>
+          <rect x="38" y="557" width="264" height="61" rx="28" fill="#111a2b" stroke="#344157"/>
+          <text x="84" y="585" text-anchor="middle" fill="#9baac0" font-size="17" font-family="Arial">⌂</text><text x="84" y="605" text-anchor="middle" fill="#9baac0" font-size="10" font-family="Arial">Home</text>
+          <text x="170" y="585" text-anchor="middle" fill="#9baac0" font-size="17" font-family="Arial">◷</text><text x="170" y="605" text-anchor="middle" fill="#9baac0" font-size="10" font-family="Arial">History</text>
+          <text x="256" y="585" text-anchor="middle" fill="#55aaff" font-size="17" font-family="Arial">⚙</text><text x="256" y="605" text-anchor="middle" fill="#f2f5ff" font-size="10" font-family="Arial">Settings</text>
+        </svg>
+        <figcaption>Settings · switches and device/API status</figcaption>
+      </figure>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>History code</h3>
+        <p class="small">Each scan is added at the top. The list is capped at 100; Clear all asks before removing it.</p>
+        <pre>setHistory((current) =&gt;
+  [{
+    id: `${Date.now()}-${Math.random()}`,
+    timestamp: Date.now(), raw, result,
+  }, ...current].slice(0, 100)
+)</pre>
+        <p class="source"><code>mobile/src/context/AppContext.tsx:92–98</code> · screen: <code>mobile/src/app/(tabs)/history.tsx</code></p>
+      </div>
+      <div class="card">
+        <h3>Settings code</h3>
+        <p class="small">Theme, settings and history are restored/saved with AsyncStorage. Settings values can be included with a scan request.</p>
+        <pre>AsyncStorage.setItem('amane-history', ...)
+AsyncStorage.setItem('amane-settings', ...)
+AsyncStorage.setItem('amane-theme', ...)</pre>
+        <p class="source"><code>mobile/src/context/AppContext.tsx:36–74</code> · UI: <code>mobile/src/app/(tabs)/settings.tsx</code></p>
+      </div>
+    </div>
+    <div class="callout warning"><strong>Privacy:</strong> history is local to this app installation. If an API URL is configured, scan text can also be sent to that server; use only a backend you trust.</div>
+    <div class="footer"><span>AMANE DZ · APP GUIDE</span><span>05</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"><span>05 · API &amp; risk analysis</span><span>What the app sends and what it does not promise</span></div>
+    <h2>Where does a scan get checked?</h2>
+    <p>For a decoded QR value, the service chooses one of three paths. The app always has a local path, so a configured server is optional.</p>
+    <svg class="svg-wide" viewBox="0 0 900 190" role="img" aria-label="Diagram showing demo, backend and local scan paths">
+      <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#397dbb"/></marker></defs>
+      <rect x="8" y="55" width="155" height="72" rx="14" fill="#edf6ff" stroke="#9bc7eb"/>
+      <text x="85" y="83" text-anchor="middle" fill="#12355c" font-size="17" font-weight="bold">QR text</text><text x="85" y="106" text-anchor="middle" fill="#526784" font-size="12">parsePayload()</text>
+      <rect x="244" y="9" width="220" height="54" rx="12" fill="#f1ecff" stroke="#b8a4ed"/>
+      <text x="354" y="32" text-anchor="middle" fill="#4d347e" font-size="14" font-weight="bold">EXPO_PUBLIC_USE_MOCK=true</text><text x="354" y="50" text-anchor="middle" fill="#62547d" font-size="11">sample response</text>
+      <rect x="244" y="70" width="220" height="54" rx="12" fill="#edfbf3" stroke="#9ad7b4"/>
+      <text x="354" y="93" text-anchor="middle" fill="#17663c" font-size="14" font-weight="bold">API URL configured</text><text x="354" y="111" text-anchor="middle" fill="#526784" font-size="11">POST /api/scan</text>
+      <rect x="244" y="131" width="220" height="54" rx="12" fill="#fff7e8" stroke="#edcd89"/>
+      <text x="354" y="154" text-anchor="middle" fill="#785311" font-size="14" font-weight="bold">No URL / API not OK</text><text x="354" y="172" text-anchor="middle" fill="#6d6251" font-size="11">on-device heuristic</text>
+      <rect x="565" y="55" width="190" height="72" rx="14" fill="#101b2c" stroke="#53708f"/>
+      <text x="660" y="84" text-anchor="middle" fill="#f2f5ff" font-size="16" font-weight="bold">ScanResult</text><text x="660" y="106" text-anchor="middle" fill="#b7c8df" font-size="11">verdict + score + details</text>
+      <rect x="792" y="55" width="100" height="72" rx="14" fill="#edf6ff" stroke="#9bc7eb"/>
+      <text x="842" y="84" text-anchor="middle" fill="#12355c" font-size="15" font-weight="bold">Preview</text><text x="842" y="106" text-anchor="middle" fill="#526784" font-size="11">user decides</text>
+      <path d="M163 91H230" stroke="#397dbb" stroke-width="2" marker-end="url(#arrow)"/>
+      <path d="M464 36C520 36 510 74 554 82" fill="none" stroke="#397dbb" stroke-width="2" marker-end="url(#arrow)"/>
+      <path d="M464 97H554" stroke="#397dbb" stroke-width="2" marker-end="url(#arrow)"/>
+      <path d="M464 158C520 158 510 118 554 108" fill="none" stroke="#397dbb" stroke-width="2" marker-end="url(#arrow)"/>
+      <path d="M755 91H781" stroke="#397dbb" stroke-width="2" marker-end="url(#arrow)"/>
+    </svg>
+    <div class="two-col">
+      <div>
+        <h3>Mobile request shape</h3>
+        <pre>POST {EXPO_PUBLIC_API_URL}/api/scan
+Content-Type: application/json
+
+{
+  "raw": "https://example.com",
+  "type": "URL",
+  "settings": {
+    "urlShortenerUnfurl": true,
+    "blockInsecureHttp": true,
+    "safeBrowsingApi": true
+  }
+}</pre>
+        <p class="small">For <code>WIFI</code>, parsed data also includes <code>wifi: { ssid, authentication, password }</code>. The server should return a <code>ScanResult</code>: <code>verdict</code>, <code>score</code>, <code>summary</code>, diagnostics and <code>resolvedUrl</code>.</p>
+      </div>
+      <div>
+        <h3>Local fallback is a heuristic</h3>
+        <p class="small">The built-in checks look for HTTP, selected shorteners, raw IP addresses, chosen high-risk TLDs/keywords, and open Wi-Fi profiles. This is not a live reputation lookup.</p>
+        <h3>Important switches</h3>
+        <ul class="small">
+          <li><code>EXPO_PUBLIC_USE_MOCK=true</code> chooses demo service responses.</li>
+          <li><code>EXPO_PUBLIC_API_URL</code> enables backend calls. Without it, scans use local analysis.</li>
+          <li>The Settings Safe Browsing switch is sent as a preference; an API must implement the actual lookup.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout warning"><strong>Health indicator detail:</strong> with no API URL, <code>checkApiHealth()</code> returns without making a request. Settings then treats that resolved result as “connected”; this status is not proof that a server was contacted.</div>
+    <p class="source">Mobile API client: <code>mobile/src/services/api.ts</code> · payload type: <code>mobile/src/types/api.ts</code>. Root <code>docs/API_CONTRACT.md</code> documents the older web app config; mobile uses the <code>EXPO_PUBLIC_*</code> variables above.</p>
+    <div class="footer"><span>AMANE DZ · APP GUIDE</span><span>06</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"><span>06 · Android emulator</span><span>Install and create a virtual phone from a terminal</span></div>
+    <h2>Set up the Android simulator</h2>
+    <p>An emulator is a virtual Android phone on your computer. It is useful for layout and app-flow testing; its camera is simulated, so use a physical phone for final camera checks.</p>
+    <h3>Before you start</h3>
+    <ul>
+      <li>Linux computer, Node.js/npm, and <strong>JDK 17 or newer</strong>.</li>
+      <li>Enough disk space for Android SDK packages and one system image.</li>
+      <li>Android CLI (current official option) or Android SDK Command-Line Tools.</li>
+    </ul>
+    <h3>Current Android CLI route</h3>
+    <ol>
+      <li>Install Android CLI by following <a href="https://developer.android.com/tools/agents">Google’s official setup</a>. Ensure <code>android</code> is on your PATH: <code>command -v android</code>.</li>
+      <li>Install an emulator, platform tools, and an API 36 Google APIs system image (the project README names an API 36 Pixel 6 AVD):</li>
+    </ol>
+    <pre>export ANDROID_HOME="$HOME/Android/Sdk"
+export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"</pre>
+    <p class="small">If your SDK is elsewhere, change <code>ANDROID_HOME</code>. Put these exports in your shell startup file if you want them in every terminal.</p>
+    <pre>android sdk install emulator platform-tools platforms/android-36 \
+  build-tools/36.0.0 system-images/android-36/google_apis/x86_64
+android emulator create medium_phone
+android emulator list
+android emulator start medium_phone</pre>
+    <p class="small">The first system-image download is large. Follow any license prompts. Android CLI can list profiles with <code>android emulator create --list-profiles</code>; the exact AVD name may differ from the project’s sample Pixel name.</p>
+    <h3>Compatibility route: SDK Command-Line Tools</h3>
+    <p class="small">If you already installed the traditional Android SDK tools, these commands still work. Android’s current docs recommend Android CLI for new setups; <code>sdkmanager</code> is now deprecated in favor of <code>android sdk</code>.</p>
+    <pre>sdkmanager --install "platform-tools" "emulator" \
+  "platforms;android-36" "build-tools;36.0.0" \
+  "system-images;android-36;google_apis;x86_64"
+sdkmanager --licenses
+avdmanager create avd -n AMANE_Pixel_6_API_36 \
+  -k "system-images;android-36;google_apis;x86_64" -d pixel_6
+emulator -avd AMANE_Pixel_6_API_36</pre>
+    <div class="callout">
+      <strong>Use the project’s existing AVD if it is already created:</strong>
+      <code>emulator -list-avds</code> lists names. This repo’s README refers to <code>AMANE_Pixel_6_API_36</code>.
+      Check that Android finished booting with <code>adb devices</code>.
+    </div>
+    <p class="source">Official references: <a href="https://developer.android.com/tools/agents/android-cli">Android CLI</a>, <a href="https://developer.android.com/tools/agents/android-cli/commands/sdk">SDK commands</a>, and <a href="https://developer.android.com/tools/agents/android-cli/commands/emulator">emulator commands</a>.</p>
+    <div class="footer"><span>AMANE DZ · APP GUIDE</span><span>07</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"><span>07 · Run, view &amp; learn</span><span>Code on one side, phone on the other</span></div>
+    <h2>Open the app beside your editor</h2>
+    <pre class="ascii">+----------------------------------+   +-------------------------+
+| Editor / terminal                |   | Android emulator        |
+| mobile/src/app/(tabs)/index.tsx  |   |                         |
+| change code, then save           |   | AMANE DZ is running     |
+|                                  |   | new screen appears      |
++----------------------------------+   +-------------------------+</pre>
+    <h3>Start the app once</h3>
+    <ol>
+      <li>Start the AVD in one terminal: <code>emulator -avd AMANE_Pixel_6_API_36</code>.</li>
+      <li>From the repository root, run <code>npm install</code> and <code>npm --prefix mobile install</code> the first time only.</li>
+      <li>Run <code>npm run android</code>. Expo builds/installs the Android development app and opens it on the connected emulator.</li>
+    </ol>
+    <h3>Everyday editing loop</h3>
+    <pre># Start the development server from the repo root
+npm run dev
+# In the Expo terminal, press a to open Android</pre>
+    <svg class="svg-wide" viewBox="0 0 880 120" role="img" aria-label="Diagram explaining Fast Refresh">
+      <defs><marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#397dbb"/></marker></defs>
+      <rect x="5" y="28" width="180" height="62" rx="13" fill="#edf6ff" stroke="#9bc7eb"/>
+      <text x="95" y="54" text-anchor="middle" fill="#12355c" font-size="15" font-weight="bold">Edit &amp; save</text><text x="95" y="73" text-anchor="middle" fill="#526784" font-size="11">React Native screen</text>
+      <rect x="245" y="28" width="180" height="62" rx="13" fill="#f1ecff" stroke="#b8a4ed"/>
+      <text x="335" y="54" text-anchor="middle" fill="#4d347e" font-size="15" font-weight="bold">Metro</text><text x="335" y="73" text-anchor="middle" fill="#62547d" font-size="11">bundles JavaScript</text>
+      <rect x="485" y="28" width="180" height="62" rx="13" fill="#edfbf3" stroke="#9ad7b4"/>
+      <text x="575" y="54" text-anchor="middle" fill="#17663c" font-size="15" font-weight="bold">Fast Refresh</text><text x="575" y="73" text-anchor="middle" fill="#526784" font-size="11">sends changed code</text>
+      <rect x="725" y="28" width="150" height="62" rx="13" fill="#101b2c" stroke="#53708f"/>
+      <text x="800" y="54" text-anchor="middle" fill="#f2f5ff" font-size="15" font-weight="bold">Emulator</text><text x="800" y="73" text-anchor="middle" fill="#b7c8df" font-size="11">updates the screen</text>
+      <path d="M185 59H232M425 59H472M665 59H712" stroke="#397dbb" stroke-width="2" marker-end="url(#arrow2)"/>
+    </svg>
+    <div class="callout"><strong>What is changing?</strong> For ordinary screen edits, Metro sends updated JavaScript to the running app; you usually do not rebuild. Changes to native configuration or native dependencies require another native build with <code>npm run android</code>.</div>
+    <h3>Tile the two windows</h3>
+    <p>Place the editor on one half of the desktop and the emulator on the other. On many Linux desktops, <strong>Super + Left</strong> and <strong>Super + Right</strong> snap windows; KDE/GNOME shortcuts can differ. Resize the emulator to keep the whole phone visible. On KDE/Wayland, the repo’s scripts already set <code>QT_QPA_PLATFORM=xcb</code>.</p>
+    <h3>Other useful commands</h3>
+    <table>
+      <tr><th>Command (repo root)</th><th>When to use it</th></tr>
+      <tr><td><code>npm run mobile:typecheck</code></td><td>Check mobile TypeScript types.</td></tr>
+      <tr><td><code>npm run apk</code></td><td>Build a standalone debug APK; requires Android SDK and JDK 17+.</td></tr>
+      <tr><td><code>npm run dev</code></td><td>Start Metro for the development app and Fast Refresh.</td></tr>
+    </table>
+    <div class="footer"><span>AMANE DZ · APP GUIDE</span><span>08</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"><span>08 · Quick reference</span><span>Find the code behind each screen</span></div>
+    <h2>Where to look next</h2>
+    <table>
+      <tr><th>Feature you see</th><th>File that implements it</th></tr>
+      <tr><td>Home scanner, permission, camera, laser and result sheet</td><td><code>mobile/src/app/(tabs)/index.tsx</code></td></tr>
+      <tr><td>History rows and clear confirmation</td><td><code>mobile/src/app/(tabs)/history.tsx</code></td></tr>
+      <tr><td>Settings, toggles and API-health label</td><td><code>mobile/src/app/(tabs)/settings.tsx</code></td></tr>
+      <tr><td>QR text becomes URL / WIFI / TEXT</td><td><code>mobile/src/lib/parsePayload.ts</code></td></tr>
+      <tr><td>Mock response, backend request, local risk checks</td><td><code>mobile/src/services/api.ts</code> and <code>mobile/src/services/mock.ts</code></td></tr>
+      <tr><td>Persistent theme, preferences and 100-item history</td><td><code>mobile/src/context/AppContext.tsx</code></td></tr>
+      <tr><td>Shared colors, glass surfaces and tab bar</td><td><code>mobile/src/ui/theme.ts</code>, <code>mobile/src/ui/GlassTabBar.tsx</code></td></tr>
+      <tr><td>Camera permission message and Expo native plugins</td><td><code>mobile/app.json</code></td></tr>
+    </table>
+    <h3>If something does not work</h3>
+    <table>
+      <tr><th>What you see</th><th>Try this</th></tr>
+      <tr><td>Camera permission card remains</td><td>Tap Allow Camera, approve the Android prompt, or open Phone Settings and grant Camera. Return to Home.</td></tr>
+      <tr><td>Emulator camera cannot see a QR</td><td>Use the gallery button with a clear QR image; check live camera on a physical phone.</td></tr>
+      <tr><td>QR image reports no code</td><td>Pick a sharp, fully visible, uncropped QR image.</td></tr>
+      <tr><td>Android build cannot find Java or SDK</td><td>Use JDK 17+, install Android SDK packages, and configure <code>JAVA_HOME</code> / <code>ANDROID_HOME</code>.</td></tr>
+      <tr><td>Backend is unreachable</td><td>Check <code>EXPO_PUBLIC_API_URL</code> and <code>/api/health</code>. The scanner falls back to local heuristics when no usable response is returned.</td></tr>
+    </table>
+    <div class="callout success"><strong>Good first test:</strong> enable Demo Mode in Settings, return to Home, and tap one of its sample payload buttons. Then inspect the preview and open History. The screen buttons are sample inputs; service mock responses are controlled separately by <code>EXPO_PUBLIC_USE_MOCK=true</code>.</div>
+    <div class="callout warning"><strong>Keep expectations realistic:</strong> local checks look for suspicious patterns; they cannot prove a link is safe. Demo Mode is for learning the flow, not a live security test.</div>
+    <p class="source">Project commands and AVD name: <code>README.md</code>. Mobile-specific implementation: <code>mobile/</code>. The web/PWA app under root <code>src/</code> is a separate interface.</p>
+    <div class="footer"><span>AMANE DZ · APP GUIDE</span><span>09</span></div>
+  </section>
+</body>
+</html>

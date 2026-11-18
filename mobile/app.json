@@ -8,6 +8,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "dz.amane.app",
+      "buildNumber": "1",
       "supportsTablet": true
     },
     "android": {
